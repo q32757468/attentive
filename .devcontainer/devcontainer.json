@@ -4,6 +4,9 @@
   "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "mounts": [
-    "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached"
+    "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
+    "source=attentive-node-modules,target=/workspaces/${localWorkspaceFolderBasename}/node_modules,type=volume",
+    "source=attentive-cli-node-modules,target=/workspaces/${localWorkspaceFolderBasename}/packages/cli/node_modules,type=volume",
+    "source=attentive-notifier-node-modules,target=/workspaces/${localWorkspaceFolderBasename}/packages/notifier/node_modules,type=volume"
   ]
 }
