@@ -3,6 +3,8 @@
 - 状态：已接受
 - 日期：2026-08-25
 
+> 后续决策：[ADR-0003](0003-vscode-window-context-ipc.md) 已实现。当前代码以窗口本地 IPC 动态返回 Callback URI，并删除 `ATTENTIVE_VSCODE_CALLBACK_URI`；本文保留为历史设计记录。
+
 ## 背景
 
 Attentive CLI 在 VS Code 集成终端中运行时，Windows 通知需要在点击后回到来源窗口。工作区路径、活动文件、当前目录和最后聚焦窗口都不能唯一标识窗口，尤其无法区分打开相同工作区的多个窗口或多个空窗口。

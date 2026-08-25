@@ -1,0 +1,141 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { request } from "node:http";
+import { mkdtemp, rm, stat } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { startWindowContextServer } from "../src/window-context-server.js";
+
+describe("window context IPC server", () => {
+  it("serves live focused state over a Unix socket and disposes cleanly", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "attentive-window-"));
+    const socketPath = join(directory, "context.sock");
+    let focused = false;
+    const server = await startWindowContextServer({
+      endpoint: { kind: "socket", value: socketPath },
+      getContext: () => ({
+        version: 1,
+        focused,
+        callbackUri: "vscode://attentive.attentive-vscode/focus?window=server"
+      }),
+      logger: { error() {} }
+    });
+
+    try {
+      assert.equal(server.isListening, true);
+      assert.equal((await stat(socketPath)).mode & 0o777, 0o600);
+      assert.deepEqual(await requestOverSocket(socketPath, "GET", "/v1/window-context"), {
+        status: 200,
+        contentType: "application/json",
+        body: {
+          version: 1,
+          focused: false,
+          callbackUri: "vscode://attentive.attentive-vscode/focus?window=server"
+        }
+      });
+
+      focused = true;
+      assert.deepEqual(await requestOverSocket(socketPath, "GET", "/v1/window-context"), {
+        status: 200,
+        contentType: "application/json",
+        body: {
+          version: 1,
+          focused: true,
+          callbackUri: "vscode://attentive.attentive-vscode/focus?window=server"
+        }
+      });
+      assert.equal((await requestOverSocket(socketPath, "GET", "/other")).status, 404);
+      assert.equal((await requestOverSocket(socketPath, "POST", "/v1/window-context")).status, 405);
+    } finally {
+      await server.dispose();
+      await assert.rejects(() => stat(socketPath));
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("drops an invalid optional callback while preserving focus", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "attentive-window-"));
+    const socketPath = join(directory, "context.sock");
+    const server = await startWindowContextServer({
+      endpoint: { kind: "socket", value: socketPath },
+      getContext: () => ({
+        version: 1,
+        focused: true,
+        callbackUri: "file:///not-allowed"
+      }),
+      logger: { error() {} }
+    });
+
+    try {
+      const response = await requestOverSocket(socketPath, "GET", "/v1/window-context");
+      assert.deepEqual(response.body, { version: 1, focused: true });
+    } finally {
+      await server.dispose();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("does not unlink another server's socket when listening fails", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "attentive-window-"));
+    const socketPath = join(directory, "context.sock");
+    const first = await startWindowContextServer({
+      endpoint: { kind: "socket", value: socketPath },
+      getContext: () => ({ version: 1, focused: false }),
+      logger: { error() {} }
+    });
+
+    try {
+      await assert.rejects(() => startWindowContextServer({
+        endpoint: { kind: "socket", value: socketPath },
+        getContext: () => ({ version: 1, focused: false }),
+        logger: { error() {} }
+      }));
+      assert.equal((await stat(socketPath)).isSocket(), true);
+    } finally {
+      await first.dispose();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+});
+
+async function requestOverSocket(
+  socketPath: string,
+  method: string,
+  path: string
+): Promise<{
+  status: number;
+  contentType: string | undefined;
+  body: unknown;
+}> {
+  return await new Promise((resolve, reject) => {
+    const client = request(
+      {
+        socketPath,
+        method,
+        path,
+        headers: { connection: "close" },
+        agent: false
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer | string) => {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        });
+        response.on("end", () => {
+          try {
+            resolve({
+              status: response.statusCode ?? 0,
+              contentType: response.headers["content-type"],
+              body: JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown
+            });
+          } catch (error: unknown) {
+            reject(error);
+          }
+        });
+        response.on("error", reject);
+      }
+    );
+    client.on("error", reject);
+    client.end();
+  });
+}

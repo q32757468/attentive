@@ -18,18 +18,21 @@
     "commands": [
       {
         "command": "attentive.showCallbackStatus",
-        "title": "Attentive: Show VS Code Callback Status"
+        "title": "Attentive: Show VS Code Integration Status"
       }
     ]
   },
   "scripts": {
-    "build": "tsup src/extension.ts --format cjs --external vscode --clean",
+    "build": "tsup",
     "package:vsix": "pnpm run build && mkdir -p artifacts && vsce package --no-dependencies --out artifacts/attentive-vscode-${npm_package_version}.vsix",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@attentive/protocol": "workspace:*"
+  },
   "devDependencies": {
-    "@types/vscode": "^1.100.0",
+    "@types/vscode": "1.100.0",
     "@vscode/vsce": "^3.6.0"
   }
 }

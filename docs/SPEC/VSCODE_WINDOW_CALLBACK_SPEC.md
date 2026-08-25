@@ -4,6 +4,8 @@
 - 日期：2026-08-25
 - 决策记录：[ADR-0002](../ADR/0002-vscode-window-callback-uri.md)
 
+> 后续设计：[VS Code 窗口上下文 IPC 实施规格](VSCODE_WINDOW_CONTEXT_IPC_SPEC.md) 已实现。新规格已以 IPC 动态返回 Callback URI，并取代本文的 callback 环境变量传递模型；本文保留为历史规格。
+
 ## 1. 背景
 
 Attentive CLI 可以在 VS Code 集成终端中运行。CLI 发出 Windows 通知后，用户希望点击通知回到启动该 CLI 的 VS Code 窗口。

@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 
 import {
+  WINDOW_CONTEXT_ENDPOINT_ENVIRONMENT_VARIABLE,
   isHttpUrl,
   isOpenUri,
+  type JsonObject,
   validateNotificationRequest,
   type NotificationRequest
 } from "@attentive/protocol";
 import { basename } from "node:path";
 import { resolveCliConfig } from "./config.js";
+import {
+  queryWindowContext,
+  type WindowContextQueryResult
+} from "./window-context-client.js";
 
 export interface CliIo {
   stdout(message: string): void;
@@ -18,6 +24,10 @@ export interface CliDependencies {
   fetchImpl?: typeof fetch;
   io?: CliIo;
   env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
+  queryWindowContextImpl?: (
+    endpoint: string
+  ) => Promise<WindowContextQueryResult>;
 }
 
 interface NotifyArgs {
@@ -48,12 +58,23 @@ export async function run(
       return 0;
     }
 
-    const request = createRequest(parsed, dependencies.env ?? process.env, io);
+    const env = dependencies.env ?? process.env;
+    const intent = createNotificationIntent(parsed);
     const config = resolveCliConfig({
       cliNotifierUrl: parsed.notifierUrl,
       configPath: parsed.configPath,
-      env: dependencies.env
+      env
     });
+    const windowContext = await resolveWindowContext(
+      env[WINDOW_CONTEXT_ENDPOINT_ENVIRONMENT_VARIABLE],
+      dependencies,
+      io
+    );
+    if (windowContext.suppressed) {
+      io.stdout("Notification suppressed: source VS Code window is focused");
+      return 0;
+    }
+    const request = createRequest(intent, windowContext.callbackUri);
     const response = await sendNotification(
       config.notifierUrl,
       request,
@@ -141,11 +162,15 @@ function parseArgs(argv: readonly string[]): NotifyArgs {
   return result;
 }
 
-function createRequest(
-  args: NotifyArgs,
-  env: NodeJS.ProcessEnv,
-  io: CliIo
-): NotificationRequest {
+interface NotificationIntent {
+  title: string;
+  body: string;
+  source?: string;
+  metadata?: JsonObject;
+  explicitUrl?: string;
+}
+
+function createNotificationIntent(args: NotifyArgs): NotificationIntent {
   let metadata: unknown;
   if (args.metadata !== undefined) {
     try {
@@ -159,24 +184,71 @@ function createRequest(
     throw new Error("--url must use the http or https protocol");
   }
 
-  let action: NotificationRequest["action"];
-  if (args.url !== undefined) {
-    action = { type: "open-uri", uri: args.url };
-  } else if (env.ATTENTIVE_VSCODE_CALLBACK_URI !== undefined) {
-    const callbackUri = env.ATTENTIVE_VSCODE_CALLBACK_URI;
-    if (isOpenUri(callbackUri)) {
-      action = { type: "open-uri", uri: callbackUri };
-    } else {
-      io.stderr("Warning: ignoring invalid ATTENTIVE_VSCODE_CALLBACK_URI");
-    }
-  }
-
-  return validateNotificationRequest({
+  const request = validateNotificationRequest({
     title: args.title,
     body: args.body,
     source: args.source,
-    action,
+    action: args.url === undefined
+      ? undefined
+      : { type: "open-uri", uri: args.url },
     metadata
+  });
+  return {
+    title: request.title,
+    body: request.body,
+    source: request.source,
+    metadata: request.metadata,
+    explicitUrl: args.url
+  };
+}
+
+async function resolveWindowContext(
+  endpoint: string | undefined,
+  dependencies: CliDependencies,
+  io: CliIo
+): Promise<{ suppressed: boolean; callbackUri?: string }> {
+  if (endpoint === undefined) {
+    return { suppressed: false };
+  }
+
+  let result: WindowContextQueryResult;
+  try {
+    const query = dependencies.queryWindowContextImpl ?? ((value: string) =>
+      queryWindowContext(value, { platform: dependencies.platform }));
+    result = await query(endpoint);
+  } catch {
+    return { suppressed: false };
+  }
+
+  if (result.kind === "invalid-endpoint") {
+    io.stderr("Warning: ignoring invalid ATTENTIVE_VSCODE_IPC_ENDPOINT");
+    return { suppressed: false };
+  }
+  if (result.kind !== "available") {
+    return { suppressed: false };
+  }
+  if (result.context.focused) {
+    return { suppressed: true };
+  }
+  return { suppressed: false, callbackUri: result.context.callbackUri };
+}
+
+function createRequest(
+  intent: NotificationIntent,
+  callbackUri: string | undefined
+): NotificationRequest {
+  const action = intent.explicitUrl !== undefined
+    ? { type: "open-uri" as const, uri: intent.explicitUrl }
+    : callbackUri !== undefined && isOpenUri(callbackUri)
+      ? { type: "open-uri" as const, uri: callbackUri }
+      : undefined;
+
+  return validateNotificationRequest({
+    title: intent.title,
+    body: intent.body,
+    source: intent.source,
+    action,
+    metadata: intent.metadata
   });
 }
 

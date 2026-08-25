@@ -6,6 +6,9 @@ import {
   isHttpUrl,
   isOpenUri,
   MAX_OPEN_URI_LENGTH,
+  MAX_WINDOW_CONTEXT_RESPONSE_BYTES,
+  WINDOW_CONTEXT_VERSION,
+  parseWindowContextResponse,
   validateNotificationRequest
 } from "../src/index.js";
 
@@ -91,5 +94,62 @@ describe("notification protocol", () => {
       }),
       /url is no longer supported; use action/
     );
+  });
+
+  it("parses a focused window context with a callback", () => {
+    assert.deepEqual(
+      parseWindowContextResponse({
+        version: WINDOW_CONTEXT_VERSION,
+        focused: true,
+        callbackUri: "vscode://attentive.attentive-vscode/focus?window=one"
+      }),
+      {
+        version: WINDOW_CONTEXT_VERSION,
+        focused: true,
+        callbackUri: "vscode://attentive.attentive-vscode/focus?window=one"
+      }
+    );
+  });
+
+  it("keeps focused state when the optional callback is absent or invalid", () => {
+    assert.deepEqual(
+      parseWindowContextResponse({ version: 1, focused: false }),
+      { version: 1, focused: false }
+    );
+    assert.deepEqual(
+      parseWindowContextResponse({
+        version: 1,
+        focused: true,
+        callbackUri: "file:///not-allowed"
+      }),
+      { version: 1, focused: true }
+    );
+  });
+
+  it("rejects invalid core window context fields", () => {
+    for (const value of [
+      null,
+      [],
+      { version: 2, focused: false },
+      { version: 1 },
+      { version: 1, focused: "true" }
+    ]) {
+      assert.equal(parseWindowContextResponse(value), undefined);
+    }
+  });
+
+  it("accepts the callback length boundary and rejects the next character", () => {
+    const prefix = "https://example.com/";
+    const valid = `${prefix}${"a".repeat(MAX_OPEN_URI_LENGTH - prefix.length)}`;
+    const invalid = `${valid}a`;
+    assert.deepEqual(
+      parseWindowContextResponse({ version: 1, focused: false, callbackUri: valid }),
+      { version: 1, focused: false, callbackUri: valid }
+    );
+    assert.deepEqual(
+      parseWindowContextResponse({ version: 1, focused: false, callbackUri: invalid }),
+      { version: 1, focused: false }
+    );
+    assert.equal(MAX_WINDOW_CONTEXT_RESPONSE_BYTES, 8 * 1024);
   });
 });

@@ -1,13 +1,13 @@
 # Attentive PRD
 
-- 当前实现：0.1 最小通知闭环
-- 下一目标：VS Code 集成终端窗口回跳
+- 当前实现：0.1 通知闭环与 VS Code 窗口上下文 IPC
+- 后续目标：按验收矩阵扩展已验证的 Remote 环境支持
 
 ## 1. 背景
 
 Attentive 是一套可被外部系统调用的 Windows 通知软件。当前最小闭环由通知器网络服务、CLI 和共享协议组成：外部系统通过 CLI 调用 Notifier，在 Windows 上显示系统通知。
 
-下一目标是在 VS Code 集成终端中运行 CLI 时，把来源窗口的 callback URI 随通知传递。用户点击 Windows Toast 后，VS Code 将 callback 路由回生成它的窗口。
+当前实现是在 VS Code 集成终端中运行 CLI 时，通过来源窗口的本地 IPC 查询实时 `focused` 状态和 callback URI。用户点击 Windows Toast 后，VS Code 将 callback 路由回生成它的窗口；来源窗口聚焦时 CLI 在联系 Notifier 前抑制通知。
 
 ## 2. 目标
 
@@ -76,15 +76,15 @@ attentive notify \
 
 `--url` 转换为 `open-uri` Action。点击通知时打开该 HTTP/HTTPS URL。
 
-### 5.3 VS Code 窗口回跳
+### 5.3 VS Code 窗口回跳与聚焦抑制
 
-VS Code 扩展通过 `asExternalUri` 生成窗口 callback，并向新建、重启或窗口重载后恢复的集成终端设置：
+VS Code 扩展通过 `asExternalUri` 生成窗口 callback，并启动当前 Extension Host 生命周期内的本地 Window Context server，向新建或重启的集成终端设置：
 
 ```text
-ATTENTIVE_VSCODE_CALLBACK_URI=<opaque callback URI>
+ATTENTIVE_VSCODE_IPC_ENDPOINT=<opaque socket or pipe path>
 ```
 
-用户没有显式传入 `--url` 时，CLI 自动将该 URI 转换为 `open-uri` Action。点击通知后回到来源 VS Code 窗口。callback 缺失或非法时，CLI 仍发送无点击动作的普通通知。
+CLI 在发送前查询 `GET /v1/window-context`。当 `focused=true` 时输出固定抑制信息并以退出码 0 结束，不联系 Notifier；当 `focused=false` 时按显式 `--url`、IPC callback URI、无 Action 的顺序构造通知。endpoint 缺失、非法、不可达或响应无效时 fail-open 发送普通通知；合法的 `focused` 独立生效，非法 callback 只删除点击动作。
 
 ## 6. 通知请求
 
@@ -168,10 +168,10 @@ attentive notify --title "..." --body "..."
 点击动作优先级为：
 
 ```text
-显式 --url > ATTENTIVE_VSCODE_CALLBACK_URI > 无 Action
+显式 --url > IPC callbackUri > 无 Action
 ```
 
-显式 `--url` 非法时返回非零退出码。环境 callback 非法时向 stderr 输出 warning，但继续发送普通通知。CLI 默认输出人类可读文本，不实现 JSON 输出模式。连接失败、超时和 HTTP 错误返回非零退出码，默认不自动重试。
+显式 `--url` 非法时返回非零退出码，且不会被聚焦抑制掩盖。IPC endpoint 格式非法时向 stderr 输出 warning；连接失败、超时和响应错误静默 fail-open。Notifier 连接失败、超时和 HTTP 错误返回非零退出码，默认不自动重试。
 
 ## 10. VS Code 扩展
 
@@ -179,9 +179,10 @@ attentive notify --title "..." --body "..."
 - 使用 `*` 激活，激活逻辑必须轻量；
 - 声明为 workspace extension；
 - 注册 `/focus` URI handler；
-- 必须原样保存 `asExternalUri` 返回的完整 URI；
-- 使用持久化的 `environmentVariableCollection`，让 VS Code 在窗口重载时直接把缓存的贡献应用到恢复终端；
-- 新建或重启的集成终端获得环境变量；窗口重载后由 VS Code 恢复的终端复用持久化贡献；
+- 必须原样保存 `asExternalUri` 返回的完整 URI，并由 Window Context IPC 动态返回；
+- 使用非持久的 `environmentVariableCollection` 贡献 `ATTENTIVE_VSCODE_IPC_ENDPOINT`；
+- 新建或重启的集成终端获得 endpoint；窗口重载后恢复的旧终端可能持有已失效 endpoint，并按 fail-open 处理；
+- 每次 IPC 请求即时读取 `vscode.window.state.focused`；
 - handler 不弹窗、不打开文件、不增加失效 URI 回退；
 - 提供不泄露完整 URI 的 callback 状态诊断命令。
 
@@ -196,9 +197,9 @@ Windows Notifier 使用参数化的 `explorer.exe <uri>` 打开已校验 URI，�
 自动化测试至少覆盖：
 
 - Protocol 的 Action 类型、scheme 和长度校验；
-- CLI 的 callback 读取、显式覆盖、缺失和非法降级；
+- CLI 的 IPC endpoint 查询、聚焦抑制、显式覆盖、缺失和非法降级；
 - Notifier 点击去重和无 shell URI opener；
-- VS Code 扩展的 callback 生成、环境注入和 handler 路径校验。
+- VS Code 扩展的 callback 生成、IPC server、非持久 endpoint 注入和 handler 路径校验。
 
 人工验收至少覆盖：
 
@@ -206,10 +207,10 @@ Windows Notifier 使用参数化的 `explorer.exe <uri>` 打开已校验 URI，�
 - 相同工作区的两个窗口；
 - 两个空窗口；
 - 新建和重启终端；
-- callback 缺失或非法时仍显示普通通知；
+- callback 缺失或非法、IPC 不可用时仍显示普通通知；
 - 显式网页 URL 覆盖 VS Code callback；
 - 来源窗口关闭后的 VS Code 原生行为；
 - Windows Stable 上真实 Toast 点击；
 - 每个准备宣称支持的 Remote 环境。
 
-详细规格见 [VS Code 窗口回跳规格](SPEC/VSCODE_WINDOW_CALLBACK_SPEC.md)，技术决策见 [ADR-0002](ADR/0002-vscode-window-callback-uri.md)。
+详细规格见 [VS Code 窗口上下文 IPC 实施规格](SPEC/VSCODE_WINDOW_CONTEXT_IPC_SPEC.md)，技术决策见 [ADR-0003](ADR/0003-vscode-window-context-ipc.md)。

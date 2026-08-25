@@ -2,7 +2,7 @@
 
 Attentive 是一个通过 HTTP 接收通知请求、并在 Windows 主机上显示系统通知的 pnpm TypeScript monorepo。
 
-当前 `0.1` 实现包含 Notifier、CLI、受控点击 Action 和 VS Code Stable 窗口回跳扩展。当 CLI 在扩展创建的新集成终端中运行时，点击通知可回到来源窗口。
+当前 `0.1` 实现包含 Notifier、CLI、受控点击 Action 和 VS Code Stable 窗口上下文 IPC 扩展。当 CLI 在扩展创建的新集成终端中运行时，点击通知可回到来源窗口；来源窗口聚焦时通知会被 CLI 成功抑制。
 
 ## 开发
 
@@ -52,7 +52,7 @@ HTTP 接口：
 - `GET /health`
 - `POST /api/v1/notifications`
 
-## VS Code 窗口回跳
+## VS Code 窗口上下文 IPC
 
 构建并安装本地 VS Code 扩展：
 
@@ -60,8 +60,8 @@ HTTP 接口：
 pnpm --dir packages/vscode-extension run package:vsix
 ```
 
-安装生成的 VSIX 后，新建或重启 VS Code 集成终端；窗口重载时，VS Code 会复用持久化的环境贡献恢复终端。此后 CLI 发出的通知在没有显式 `--url` 时，点击会回到启动 CLI 的 VS Code 窗口。
+安装生成的 VSIX 后，新建或重启 VS Code 集成终端。扩展会向终端贡献当前 Extension Host 激活期间的本地 IPC endpoint；CLI 在发送前查询来源窗口的 `focused` 状态和 callback URI。窗口聚焦时输出抑制原因且不联系 Notifier，失焦时在没有显式 `--url` 的情况下，点击会回到启动 CLI 的 VS Code 窗口。IPC 不可用时会 fail-open 发送普通通知。
 
-如需检查是否生效，运行 **Attentive: Show VS Code Callback Status**。
+如需检查是否生效，运行 **Attentive: Show VS Code Integration Status**。窗口重载后恢复的旧终端可能持有已失效 endpoint；重启终端即可获得新 endpoint。
 
-详细规格见 [VS Code 窗口回跳规格](docs/SPEC/VSCODE_WINDOW_CALLBACK_SPEC.md)，技术决策见 [ADR-0002](docs/ADR/0002-vscode-window-callback-uri.md)。
+详细规格见 [VS Code 窗口上下文 IPC 实施规格](docs/SPEC/VSCODE_WINDOW_CONTEXT_IPC_SPEC.md)，技术决策见 [ADR-0003](docs/ADR/0003-vscode-window-context-ipc.md)。

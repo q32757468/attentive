@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.23.0",
+  "engines": {
+    "node": ">=18.18"
+  },
   "scripts": {
     "build": "pnpm --recursive run build",
     "check": "pnpm run typecheck && pnpm run test",
@@ -12,7 +15,7 @@
     "typecheck": "pnpm --filter @attentive/protocol build && pnpm --recursive run typecheck"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "18.19.130",
     "tsup": "^8.5.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"

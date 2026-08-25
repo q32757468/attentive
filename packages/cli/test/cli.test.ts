@@ -88,16 +88,28 @@ describe("attentive CLI", () => {
     assert.match(output[0], /Usage: attentive notify/);
   });
 
-  it("uses the VS Code callback URI when no explicit URL is provided", async () => {
+  it("uses the IPC callback URI when no explicit URL is provided", async () => {
     let body: unknown;
+    let queriedEndpoint = "";
     const exitCode = await run(
       ["notify", "--title", "Build", "--body", "Done"],
       {
         env: {
           ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
-          ATTENTIVE_VSCODE_CALLBACK_URI: "vscode://attentive.attentive-vscode/focus?window=source"
+          ATTENTIVE_VSCODE_IPC_ENDPOINT: "/tmp/attentive-source.sock"
         },
         io: { stdout() {}, stderr() {} },
+        queryWindowContextImpl: async (endpoint) => {
+          queriedEndpoint = endpoint;
+          return {
+            kind: "available",
+            context: {
+              version: 1,
+              focused: false,
+              callbackUri: "vscode://attentive.attentive-vscode/focus?window=source"
+            }
+          };
+        },
         fetchImpl: async (_input, init) => {
           body = JSON.parse(String(init?.body));
           return new Response(JSON.stringify({ notificationId: "notification-2" }), { status: 201 });
@@ -106,6 +118,7 @@ describe("attentive CLI", () => {
     );
 
     assert.equal(exitCode, 0);
+    assert.equal(queriedEndpoint, "/tmp/attentive-source.sock");
     assert.deepEqual(body, {
       title: "Build",
       body: "Done",
@@ -116,17 +129,29 @@ describe("attentive CLI", () => {
     });
   });
 
-  it("prefers an explicit URL without diagnosing the callback", async () => {
+  it("queries focus before using an explicit URL and gives it action priority", async () => {
     const errors: string[] = [];
     let body: unknown;
+    let queried = false;
     const exitCode = await run(
       ["notify", "--title", "Build", "--body", "Done", "--url", "https://example.com/result"],
       {
         env: {
           ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
-          ATTENTIVE_VSCODE_CALLBACK_URI: "not a URI"
+          ATTENTIVE_VSCODE_IPC_ENDPOINT: "/tmp/attentive-source.sock"
         },
         io: { stdout() {}, stderr: (message) => errors.push(message) },
+        queryWindowContextImpl: async () => {
+          queried = true;
+          return {
+            kind: "available",
+            context: {
+              version: 1,
+              focused: false,
+              callbackUri: "vscode://attentive.attentive-vscode/focus?window=source"
+            }
+          };
+        },
         fetchImpl: async (_input, init) => {
           body = JSON.parse(String(init?.body));
           return new Response(JSON.stringify({ notificationId: "notification-3" }), { status: 201 });
@@ -135,6 +160,7 @@ describe("attentive CLI", () => {
     );
 
     assert.equal(exitCode, 0);
+    assert.equal(queried, true);
     assert.deepEqual(errors, []);
     assert.deepEqual((body as { action: unknown }).action, {
       type: "open-uri",
@@ -142,7 +168,7 @@ describe("attentive CLI", () => {
     });
   });
 
-  it("warns and sends a plain notification for an invalid callback", async () => {
+  it("warns and sends a plain notification for an invalid IPC endpoint", async () => {
     const errors: string[] = [];
     let body: unknown;
     const exitCode = await run(
@@ -150,7 +176,7 @@ describe("attentive CLI", () => {
       {
         env: {
           ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
-          ATTENTIVE_VSCODE_CALLBACK_URI: "file:///tmp/not-allowed"
+          ATTENTIVE_VSCODE_IPC_ENDPOINT: ""
         },
         io: { stdout() {}, stderr: (message) => errors.push(message) },
         fetchImpl: async (_input, init) => {
@@ -161,7 +187,93 @@ describe("attentive CLI", () => {
     );
 
     assert.equal(exitCode, 0);
-    assert.deepEqual(errors, ["Warning: ignoring invalid ATTENTIVE_VSCODE_CALLBACK_URI"]);
+    assert.deepEqual(errors, ["Warning: ignoring invalid ATTENTIVE_VSCODE_IPC_ENDPOINT"]);
+    assert.deepEqual(body, { title: "Build", body: "Done" });
+  });
+
+  it("suppresses a focused notification without contacting the notifier", async () => {
+    const output: string[] = [];
+    let notifierCalls = 0;
+    const exitCode = await run(
+      ["notify", "--title", "Build", "--body", "Done", "--url", "https://example.com/result"],
+      {
+        env: {
+          ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
+          ATTENTIVE_VSCODE_IPC_ENDPOINT: "/tmp/attentive-source.sock"
+        },
+        io: {
+          stdout: (message) => output.push(message),
+          stderr: () => undefined
+        },
+        queryWindowContextImpl: async () => ({
+          kind: "available",
+          context: { version: 1, focused: true }
+        }),
+        fetchImpl: async () => {
+          notifierCalls += 1;
+          throw new Error("notifier should not be called");
+        }
+      }
+    );
+
+    assert.equal(exitCode, 0);
+    assert.equal(notifierCalls, 0);
+    assert.deepEqual(output, [
+      "Notification suppressed: source VS Code window is focused"
+    ]);
+  });
+
+  it("rejects an invalid explicit URL before querying window context", async () => {
+    let queryCalls = 0;
+    let notifierCalls = 0;
+    const errors: string[] = [];
+    const exitCode = await run(
+      ["notify", "--title", "Build", "--body", "Done", "--url", "javascript:alert(1)"],
+      {
+        env: {
+          ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
+          ATTENTIVE_VSCODE_IPC_ENDPOINT: "/tmp/attentive-source.sock"
+        },
+        io: { stdout() {}, stderr: (message) => errors.push(message) },
+        queryWindowContextImpl: async () => {
+          queryCalls += 1;
+          return { kind: "available", context: { version: 1, focused: true } };
+        },
+        fetchImpl: async () => {
+          notifierCalls += 1;
+          throw new Error("notifier should not be called");
+        }
+      }
+    );
+
+    assert.equal(exitCode, 1);
+    assert.equal(queryCalls, 0);
+    assert.equal(notifierCalls, 0);
+    assert.deepEqual(errors, ["--url must use the http or https protocol"]);
+  });
+
+  it("fails open silently when IPC is unavailable and ignores the legacy variable", async () => {
+    let body: unknown;
+    const errors: string[] = [];
+    const exitCode = await run(
+      ["notify", "--title", "Build", "--body", "Done"],
+      {
+        env: {
+          ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
+          ATTENTIVE_VSCODE_IPC_ENDPOINT: "/tmp/attentive-missing.sock",
+          ATTENTIVE_VSCODE_CALLBACK_URI: "vscode://old/window"
+        },
+        io: { stdout() {}, stderr: (message) => errors.push(message) },
+        queryWindowContextImpl: async () => ({ kind: "unavailable" }),
+        fetchImpl: async (_input, init) => {
+          body = JSON.parse(String(init?.body));
+          return new Response(JSON.stringify({ notificationId: "notification-5" }), { status: 201 });
+        }
+      }
+    );
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(errors, []);
     assert.deepEqual(body, { title: "Build", body: "Done" });
   });
 

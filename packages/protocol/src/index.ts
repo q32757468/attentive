@@ -1,3 +1,9 @@
+import {
+  MAX_OPEN_URI_LENGTH,
+  isHttpUrl,
+  isOpenUri
+} from "./uri.js";
+
 export const API_VERSION = "v1";
 export const NOTIFICATIONS_PATH = "/api/v1/notifications";
 export const HEALTH_PATH = "/health";
@@ -6,10 +12,14 @@ export const DEFAULT_NOTIFIER_HOST = "0.0.0.0";
 export const DEFAULT_NOTIFIER_PORT = 8765;
 export const DEFAULT_NOTIFIER_URL = "http://127.0.0.1:8765";
 
-export type JsonObject = Record<string, unknown>;
+export {
+  isHttpUrl,
+  isOpenUri,
+  MAX_OPEN_URI_LENGTH,
+  OPEN_URI_SCHEMES
+} from "./uri.js";
 
-export const MAX_OPEN_URI_LENGTH = 4096;
-export const OPEN_URI_SCHEMES = ["http:", "https:", "vscode:"] as const;
+export type JsonObject = Record<string, unknown>;
 
 export interface OpenUriAction {
   type: "open-uri";
@@ -62,27 +72,6 @@ export function createApiError(
 
 export function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-export function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-export function isOpenUri(value: string): boolean {
-  if (value.length === 0 || value.length > MAX_OPEN_URI_LENGTH) {
-    return false;
-  }
-  try {
-    const uri = new URL(value);
-    return (OPEN_URI_SCHEMES as readonly string[]).includes(uri.protocol);
-  } catch {
-    return false;
-  }
 }
 
 export function validateNotificationRequest(
@@ -153,3 +142,13 @@ function requireString(value: unknown, field: string): string {
   }
   return value;
 }
+
+export {
+  MAX_WINDOW_CONTEXT_RESPONSE_BYTES,
+  WINDOW_CONTEXT_ENDPOINT_ENVIRONMENT_VARIABLE,
+  WINDOW_CONTEXT_PATH,
+  WINDOW_CONTEXT_TIMEOUT_MS,
+  WINDOW_CONTEXT_VERSION,
+  parseWindowContextResponse,
+  type WindowContextResponse
+} from "./window-context.js";
