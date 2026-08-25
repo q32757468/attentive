@@ -2,6 +2,10 @@
 
 All notable changes to the Attentive VS Code extension are documented here.
 
+## [0.1.4] - 2026-08-25
+
+- Tighten the extension icon artwork to improve visibility in the VS Code extensions view.
+
 ## [0.1.3] - 2026-08-25
 
 - Use a per-window local IPC endpoint for VS Code window context.
