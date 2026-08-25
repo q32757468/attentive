@@ -144,8 +144,7 @@ async function handleRequest(
     await context.dispatcher(notificationRequest, notificationId);
   } catch (error: unknown) {
     context.logger.error("Unable to submit notification", {
-      notificationId,
-      source: notificationRequest.source,
+      ...createNotificationLogContext(notificationId, notificationRequest.source),
       error: error instanceof Error ? error.message : String(error)
     });
     sendJson(response, 500, createApiError(ERROR_CODES.INTERNAL_ERROR, "unable to submit notification"));
@@ -153,11 +152,20 @@ async function handleRequest(
   }
 
   context.logger.info("Notification submitted", {
-    notificationId,
-    source: notificationRequest.source
+    ...createNotificationLogContext(notificationId, notificationRequest.source)
   });
   const result: CreateNotificationResponse = { notificationId };
   sendJson(response, 201, result);
+}
+
+function createNotificationLogContext(
+  notificationId: string,
+  source: string | undefined
+): Record<string, unknown> {
+  return {
+    notificationId,
+    ...(source === undefined ? {} : { source })
+  };
 }
 
 function validateBody(value: unknown): NotificationRequest {

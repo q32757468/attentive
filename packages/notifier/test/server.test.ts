@@ -49,6 +49,43 @@ describe("notifier HTTP server", () => {
     }
   });
 
+  it("omits source from submission logs when it is not provided", async () => {
+    const infoContexts: Array<Record<string, unknown>> = [];
+    const server = await startNotifier({
+      host: "127.0.0.1",
+      port: 0,
+      dispatcher: () => undefined,
+      logger: {
+        info(_message, context) {
+          if (context) {
+            infoContexts.push(context);
+          }
+        },
+        error() {}
+      }
+    });
+
+    try {
+      const address = server.address();
+      assert.equal(typeof address, "object");
+      if (!address || typeof address === "string") {
+        throw new Error("test server did not expose a TCP address");
+      }
+
+      const response = await fetch(`http://127.0.0.1:${address.port}/api/v1/notifications`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "Build", body: "Done" })
+      });
+
+      assert.equal(response.status, 201);
+      assert.equal(infoContexts.length, 1);
+      assert.equal("source" in infoContexts[0], false);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("returns structured validation errors and health status", async () => {
     const server = await startNotifier({
       host: "127.0.0.1",
