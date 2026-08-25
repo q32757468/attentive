@@ -7,7 +7,7 @@ import {
   type JsonObject,
   validateNotificationRequest,
   type NotificationRequest
-} from "@attentive/protocol";
+} from "@attentive-kit/protocol";
 import { basename } from "node:path";
 import { resolveCliConfig } from "./config.js";
 import {

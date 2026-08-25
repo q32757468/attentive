@@ -3,7 +3,7 @@ import {
   WINDOW_CONTEXT_VERSION,
   isOpenUri,
   type WindowContextResponse
-} from "@attentive/protocol";
+} from "@attentive-kit/protocol";
 import type { IpcEndpointOptions } from "./ipc-endpoint.js";
 import {
   startWindowContextServer,

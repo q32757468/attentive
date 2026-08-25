@@ -3,7 +3,7 @@
 import {
   DEFAULT_NOTIFIER_HOST,
   DEFAULT_NOTIFIER_PORT
-} from "@attentive/protocol";
+} from "@attentive-kit/protocol";
 import { basename } from "node:path";
 import { startNotifier } from "./server.js";
 

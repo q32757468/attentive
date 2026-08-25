@@ -11,8 +11,8 @@
     "check": "pnpm run typecheck && pnpm run test",
     "notify": "tsx packages/cli/src/cli.ts notify",
     "notifier": "tsx packages/notifier/src/cli.ts",
-    "test": "pnpm --filter @attentive/protocol build && pnpm --recursive run test",
-    "typecheck": "pnpm --filter @attentive/protocol build && pnpm --recursive run typecheck"
+    "test": "pnpm --recursive run test",
+    "typecheck": "pnpm --recursive run typecheck"
   },
   "devDependencies": {
     "@types/node": "18.19.130",

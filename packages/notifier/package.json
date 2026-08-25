@@ -1,5 +1,5 @@
 {
-  "name": "@attentive/notifier",
+  "name": "@attentive-kit/notifier",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -26,6 +26,6 @@
     "node-notifier": "^10.0.1"
   },
   "devDependencies": {
-    "@attentive/protocol": "workspace:*"
+    "@attentive-kit/protocol": "workspace:*"
   }
 }

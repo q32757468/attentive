@@ -68,7 +68,7 @@ VS Code Stable 窗口
 
 ```text
 package:      packages/vscode-extension
-package name: @attentive/vscode-extension
+package name: attentive-vscode
 name:         attentive-vscode
 publisher:    attentive
 extension id: attentive.attentive-vscode

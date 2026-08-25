@@ -5,7 +5,7 @@ import {
   WINDOW_CONTEXT_VERSION,
   parseWindowContextResponse,
   type WindowContextResponse
-} from "@attentive/protocol";
+} from "@attentive-kit/protocol";
 import {
   createServer,
   type IncomingMessage,

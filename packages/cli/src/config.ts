@@ -4,7 +4,7 @@ import { join } from "node:path";
 import {
   DEFAULT_NOTIFIER_URL,
   isHttpUrl
-} from "@attentive/protocol";
+} from "@attentive-kit/protocol";
 
 export interface CliConfigFile {
   notifierUrl?: string;

@@ -43,7 +43,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@attentive/protocol": "workspace:*"
+    "@attentive-kit/protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/vscode": "1.100.0",

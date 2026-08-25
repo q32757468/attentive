@@ -4,7 +4,7 @@ import {
   WINDOW_CONTEXT_TIMEOUT_MS,
   parseWindowContextResponse,
   type WindowContextResponse
-} from "@attentive/protocol";
+} from "@attentive-kit/protocol";
 import {
   request as defaultRequest,
   type ClientRequest,

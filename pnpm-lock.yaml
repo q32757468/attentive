@@ -23,7 +23,7 @@ importers:
 
   packages/cli:
     devDependencies:
-      '@attentive/protocol':
+      '@attentive-kit/protocol':
         specifier: workspace:*
         version: link:../protocol
 
@@ -33,7 +33,7 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1
     devDependencies:
-      '@attentive/protocol':
+      '@attentive-kit/protocol':
         specifier: workspace:*
         version: link:../protocol
 
@@ -41,7 +41,7 @@ importers:
 
   packages/vscode-extension:
     dependencies:
-      '@attentive/protocol':
+      '@attentive-kit/protocol':
         specifier: workspace:*
         version: link:../protocol
     devDependencies:

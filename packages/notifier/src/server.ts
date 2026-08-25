@@ -10,7 +10,7 @@ import {
   type CreateNotificationResponse,
   type NotificationRequest,
   validateNotificationRequest
-} from "@attentive/protocol";
+} from "@attentive-kit/protocol";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { createWindowsToastDispatcher, type NotificationDispatcher } from "./toast.js";
 

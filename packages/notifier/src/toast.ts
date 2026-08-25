@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import notifier from "node-notifier";
-import type { NotificationRequest } from "@attentive/protocol";
+import type { NotificationRequest } from "@attentive-kit/protocol";
 
 export type NotificationDispatcher = (
   request: NotificationRequest,

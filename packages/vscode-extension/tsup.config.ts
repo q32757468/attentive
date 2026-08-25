@@ -4,6 +4,6 @@ export default defineConfig({
   entry: ["src/extension.ts"],
   format: ["cjs"],
   external: ["vscode"],
-  noExternal: ["@attentive/protocol"],
+  noExternal: ["@attentive-kit/protocol"],
   clean: true
 });

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "paths": {
-      "@attentive/protocol": ["../protocol/src/index.ts"]
+      "@attentive-kit/protocol": ["../protocol/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
