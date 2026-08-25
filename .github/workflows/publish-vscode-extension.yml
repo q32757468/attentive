@@ -1,0 +1,87 @@
+name: Publish VS Code extension
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: publish-vscode-extension
+  cancel-in-progress: false
+
+jobs:
+  detect-version:
+    name: Detect extension version change
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+      current: ${{ steps.version.outputs.current }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare extension versions
+        id: version
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          MANIFEST_PATH: packages/vscode-extension/package.json
+        shell: bash
+        run: |
+          current_version="$(node -p "require('./' + process.env.MANIFEST_PATH).version")"
+
+          if git cat-file -e "${BEFORE_SHA}:${MANIFEST_PATH}" 2>/dev/null; then
+            previous_version="$(git show "${BEFORE_SHA}:${MANIFEST_PATH}" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
+          else
+            previous_version=""
+          fi
+
+          if [[ "$current_version" != "$previous_version" ]]; then
+            changed=true
+          else
+            changed=false
+          fi
+
+          echo "Previous extension version: ${previous_version:-<none>}"
+          echo "Current extension version: $current_version"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "current=$current_version" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish version ${{ needs.detect-version.outputs.current }}
+    needs: detect-version
+    if: needs.detect-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check extension
+        run: |
+          pnpm --filter attentive-vscode run typecheck
+          pnpm --filter attentive-vscode run test
+
+      - name: Build extension
+        run: pnpm --filter attentive-vscode run build
+
+      - name: Publish to Visual Studio Marketplace with OIDC
+        working-directory: packages/vscode-extension
+        run: pnpm exec vsce publish --oidc --no-dependencies --allow-star-activation
