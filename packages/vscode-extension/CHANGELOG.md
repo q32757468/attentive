@@ -2,6 +2,10 @@
 
 All notable changes to the Attentive VS Code extension are documented here.
 
+## [0.1.5] - 2026-08-25
+
+- Bump the extension version to ensure the tightened icon is recognized as an update.
+
 ## [0.1.4] - 2026-08-25
 
 - Tighten the extension icon artwork to improve visibility in the VS Code extensions view.
