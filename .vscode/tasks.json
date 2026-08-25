@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "attentive: build extension",
+      "type": "shell",
+      "command": "pnpm --dir ${workspaceFolder}/packages/vscode-extension run dev",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "attentive: watch extension",
+      "type": "shell",
+      "command": "pnpm --dir ${workspaceFolder}/packages/vscode-extension run watch",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "attentive-tsup",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^$",
+          "message": 0
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^CLI Building entry:",
+          "endsPattern": "Build success"
+        }
+      }
+    }
+  ]
+}
