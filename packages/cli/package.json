@@ -1,7 +1,6 @@
 {
   "name": "@attentive/cli",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "engines": {
     "node": ">=18.18"
@@ -18,11 +17,11 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean",
+    "build": "tsup",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
+  "devDependencies": {
     "@attentive/protocol": "workspace:*"
   }
 }

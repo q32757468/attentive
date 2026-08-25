@@ -22,19 +22,20 @@ importers:
         version: 5.9.3
 
   packages/cli:
-    dependencies:
+    devDependencies:
       '@attentive/protocol':
         specifier: workspace:*
         version: link:../protocol
 
   packages/notifier:
     dependencies:
-      '@attentive/protocol':
-        specifier: workspace:*
-        version: link:../protocol
       node-notifier:
         specifier: ^10.0.1
         version: 10.0.1
+    devDependencies:
+      '@attentive/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/protocol: {}
 
