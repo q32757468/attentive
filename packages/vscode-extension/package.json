@@ -2,8 +2,8 @@
   "name": "attentive-vscode",
   "displayName": "Attentive",
   "description": "Routes Attentive notification clicks back to the source VS Code window.",
-  "version": "0.1.5",
-  "publisher": "ranshan",
+  "version": "0.1.8",
+  "publisher": "32757468",
   "license": "MIT",
   "icon": "assets/icon.png",
   "repository": {

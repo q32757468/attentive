@@ -2,6 +2,14 @@
 
 All notable changes to the Attentive VS Code extension are documented here.
 
+## [0.1.7] - 2026-08-25
+
+- Bump the extension version to ensure VS Code recognizes the refreshed package as an update.
+
+## [0.1.6] - 2026-08-25
+
+- Reduce the extension icon to a compact 128×128 PNG for faster packaging and clearer rendering.
+
 ## [0.1.5] - 2026-08-25
 
 - Bump the extension version to ensure the tightened icon is recognized as an update.
