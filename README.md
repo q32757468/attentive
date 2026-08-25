@@ -60,7 +60,7 @@ HTTP 接口：
 pnpm --dir packages/vscode-extension run package:vsix
 ```
 
-安装生成的 VSIX 后，新建或重启 VS Code 集成终端。此后 CLI 发出的通知在没有显式 `--url` 时，点击会回到启动 CLI 的 VS Code 窗口。
+安装生成的 VSIX 后，新建或重启 VS Code 集成终端；窗口重载时，VS Code 会复用持久化的环境贡献恢复终端。此后 CLI 发出的通知在没有显式 `--url` 时，点击会回到启动 CLI 的 VS Code 窗口。
 
 如需检查是否生效，运行 **Attentive: Show VS Code Callback Status**。
 

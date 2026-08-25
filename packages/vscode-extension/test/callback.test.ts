@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   activateCallbackExtension,
   CALLBACK_BASE_URI,
+  CALLBACK_ENVIRONMENT_DESCRIPTION,
   CALLBACK_ENVIRONMENT_VARIABLE,
   createFocusUriHandler,
   STATUS_COMMAND,
@@ -29,6 +30,7 @@ describe("VS Code callback extension", () => {
     let registeredCommand = "";
     let statusCallback: (() => unknown) | undefined;
     const collection = {
+      description: undefined as string | undefined,
       persistent: true,
       replace(name: string, value: string) { replacements.push([name, value]); },
       delete(name: string) { deletions.push(name); }
@@ -63,17 +65,17 @@ describe("VS Code callback extension", () => {
       }
     };
 
-    const cleanup = await activateCallbackExtension(context, api);
+    await activateCallbackExtension(context, api);
 
     assert.equal(parsedUri, CALLBACK_BASE_URI);
-    assert.equal(collection.persistent, false);
+    assert.equal(collection.persistent, true);
+    assert.equal(collection.description, CALLBACK_ENVIRONMENT_DESCRIPTION);
     assert.deepEqual(replacements, [[CALLBACK_ENVIRONMENT_VARIABLE, externalValue]]);
     assert.equal(registeredCommand, STATUS_COMMAND);
     statusCallback?.();
     assert.deepEqual(messages, ["Attentive callback is injected (scheme: vscode)."]);
     assert.equal(messages[0].includes(externalValue), false);
 
-    cleanup();
-    assert.deepEqual(deletions, [CALLBACK_ENVIRONMENT_VARIABLE]);
+    assert.deepEqual(deletions, []);
   });
 });

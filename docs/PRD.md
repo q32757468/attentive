@@ -78,7 +78,7 @@ attentive notify \
 
 ### 5.3 VS Code 窗口回跳
 
-VS Code 扩展通过 `asExternalUri` 生成窗口 callback，并向新建或重启的集成终端设置：
+VS Code 扩展通过 `asExternalUri` 生成窗口 callback，并向新建、重启或窗口重载后恢复的集成终端设置：
 
 ```text
 ATTENTIVE_VSCODE_CALLBACK_URI=<opaque callback URI>
@@ -180,8 +180,8 @@ attentive notify --title "..." --body "..."
 - 声明为 workspace extension；
 - 注册 `/focus` URI handler；
 - 必须原样保存 `asExternalUri` 返回的完整 URI；
-- 使用非持久化的 `environmentVariableCollection`；
-- 只保证新建或重启的集成终端获得环境变量；
+- 使用持久化的 `environmentVariableCollection`，让 VS Code 在窗口重载时直接把缓存的贡献应用到恢复终端；
+- 新建或重启的集成终端获得环境变量；窗口重载后由 VS Code 恢复的终端复用持久化贡献；
 - handler 不弹窗、不打开文件、不增加失效 URI 回退；
 - 提供不泄露完整 URI 的 callback 状态诊断命令。
 

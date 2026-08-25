@@ -1,4 +1,6 @@
 export const CALLBACK_ENVIRONMENT_VARIABLE = "ATTENTIVE_VSCODE_CALLBACK_URI";
+export const CALLBACK_ENVIRONMENT_DESCRIPTION =
+  "Enables Attentive notification callbacks by modifying ATTENTIVE_VSCODE_CALLBACK_URI";
 export const CALLBACK_BASE_URI = "vscode://attentive.attentive-vscode/focus";
 export const STATUS_COMMAND = "attentive.showCallbackStatus";
 
@@ -12,7 +14,12 @@ interface UriLike {
   toString(): string;
 }
 
+interface MarkdownStringLike {
+  readonly value: string;
+}
+
 interface EnvironmentVariableCollectionLike {
+  description?: string | MarkdownStringLike;
   persistent: boolean;
   replace(variable: string, value: string): void;
   delete(variable: string): void;
@@ -50,10 +57,13 @@ export function createFocusUriHandler(onFocus: () => void = () => undefined): {
 export async function activateCallbackExtension(
   context: CallbackExtensionContext,
   vscode: CallbackVscodeApi
-): Promise<() => void> {
+): Promise<void> {
   let injectedScheme: string | undefined;
   const collection = context.environmentVariableCollection;
-  collection.persistent = false;
+  // Keep the contribution available to terminals restored during a window
+  // reload, matching the lifecycle used by the Python extension.
+  collection.persistent = true;
+  collection.description = CALLBACK_ENVIRONMENT_DESCRIPTION;
 
   context.subscriptions.push(
     vscode.window.registerUriHandler(createFocusUriHandler()),
@@ -70,6 +80,4 @@ export async function activateCallbackExtension(
   );
   collection.replace(CALLBACK_ENVIRONMENT_VARIABLE, callbackUri.toString());
   injectedScheme = callbackUri.scheme;
-
-  return () => collection.delete(CALLBACK_ENVIRONMENT_VARIABLE);
 }

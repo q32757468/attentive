@@ -17,8 +17,8 @@ VS Code 扩展可以注册 URI handler，并通过 `vscode.env.asExternalUri` �
 
 1. 注册 `vscode://attentive.attentive-vscode/focus` 的 URI handler；
 2. 使用 `vscode.env.asExternalUri` 生成该窗口的完整 callback URI；
-3. 通过非持久化的 `environmentVariableCollection` 将它写入 `ATTENTIVE_VSCODE_CALLBACK_URI`；
-4. 只保证新建或重启的集成终端获得该变量。
+3. 通过持久化的 `environmentVariableCollection` 将它写入 `ATTENTIVE_VSCODE_CALLBACK_URI`，使 VS Code 重载时恢复的终端可以直接使用缓存贡献；
+4. 新建或重启的集成终端获得该变量；窗口重载时由 VS Code 恢复的终端复用持久化贡献。
 
 CLI 在用户没有显式传入 `--url` 时读取该变量。缺失时继续发送无点击动作的通知；非法时输出 warning 后继续发送。显式 `--url` 优先，并继续只接受 HTTP/HTTPS。
 
@@ -35,12 +35,12 @@ CLI 在用户没有显式传入 `--url` 时读取该变量。缺失时继续发�
 
 `open-uri` 只允许 `http:`、`https:` 和 `vscode:`，最大长度为 4096 个字符。Notifier 不解析 VS Code 参数，通过无 shell 的 `explorer.exe <uri>` 打开 URI，并保证一次点击至多打开一次。
 
-扩展使用 `*` 激活、`extensionKind: ["workspace"]`、`persistent: false`，最低支持 VS Code Stable `^1.100.0`。首版只构建本地 VSIX。
+扩展使用 `*` 激活、`extensionKind: ["workspace"]`、持久化 `environmentVariableCollection`，最低支持 VS Code Stable `^1.100.0`。首版只构建本地 VSIX。
 
 ## 理由
 
 - 窗口选择由 VS Code 自身的 URI 路由完成，不需要 Attentive 维护窗口登记或推测来源；
-- 环境变量沿集成终端的自然进程继承链传播，适合当前唯一承诺的调用入口；
+- 环境变量沿集成终端的自然进程继承链传播；持久化 collection 还可以避免窗口重载后恢复终端先于扩展重新激活时缺少贡献；
 - opaque callback URI 不暴露工作区或活动文件信息；
 - 通用 `open-uri` action 保持 Notifier 与 VS Code 解耦；
 - scheme 白名单和无 shell 打开方式限制了点击动作的执行能力；
@@ -55,6 +55,10 @@ CLI 在用户没有显式传入 `--url` 时读取该变量。缺失时继续发�
 ### 自建 window ID、token 和 registry
 
 可以承载更丰富的实时上下文，但需要生命周期、过期、清理、校验和 IPC 设计。当前需求只需回跳窗口，复杂度不合理，因此留待非终端场景重新评估。
+
+### 使用非持久化的 collection
+
+窗口重载后，持久化终端只能先恢复没有 callback 的环境，等扩展重新激活并重新注入后才会显示环境变更提示。因此拒绝该方案；项目采用 VS Code API 默认的持久化 collection 生命周期，与 Python 扩展一致。
 
 ### 修改 Extension Host 的 `process.env`
 
@@ -73,7 +77,7 @@ URI 的 query 可能包含 shell 元字符，不应交给命令解释器，因�
 - 协议、CLI、Notifier 和文档需要同步从 `url` 迁移到 `open-uri` action；
 - CLI 的用户界面继续保留 `--url`，但内部转换为 action；
 - 需要新增 VS Code 扩展的构建、VSIX 打包、单元测试和人工多窗口验收；
-- 已存在或持久化重连的终端不保证获得新 callback，文档必须要求新建或重启终端；
+- 已存在的终端不保证获得新 callback；如果窗口重载时 callback URI 发生变化，持久化重连的终端也可能需要新建或重启；
 - Remote 环境是否正式支持取决于各环境的端到端验收结果；
 - 失效 callback 保持 VS Code 原生行为，不增加 fallback；
 - 非终端来源需要新的 ADR，不得默认为本决策已经覆盖。

@@ -39,7 +39,7 @@ VS Code Stable 窗口
   ├─ asExternalUri(...) 生成窗口定向 URI
   └─ ATTENTIVE_VSCODE_CALLBACK_URI
           │
-          ▼ 新建或重启的集成终端
+          ▼ 新建、重启或窗口重载后恢复的集成终端
         Attentive CLI
           ├─ 显式 --url 存在：使用 HTTP/HTTPS URL
           ├─ 否则使用合法的 VS Code callback URI
@@ -110,10 +110,10 @@ ATTENTIVE_VSCODE_CALLBACK_URI=<asExternalUri 返回的完整 URI>
 约束如下：
 
 - 使用全局 collection，使当前窗口随后创建的所有集成终端获得相同值；
-- `persistent` 设为 `false`，避免跨窗口重载缓存旧路由 URI；
+- `persistent` 设为 `true`，让 VS Code 在窗口重载时把缓存的贡献直接应用到恢复终端；URI 仍在扩展激活时通过 `asExternalUri` 重新解析；
 - mutation 只在进程创建时应用；
-- 插件停用时删除 mutation；
-- 已经运行或被持久化重连的 shell 不保证获得新值，用户需要新建或重启终端；
+- 不在普通停用流程中主动删除 mutation，由 VS Code 管理 collection 生命周期；
+- 已经运行的 shell 不保证获得新值；如果窗口重载时 callback URI 发生变化，被持久化重连的 shell 也可能需要新建或重启终端；
 - 本期不修改 Extension Host 的 `process.env`。
 
 扩展提供 `Attentive: Show VS Code Callback Status` 诊断命令。命令只显示是否已注入和 URI scheme，不展示完整 URI。
