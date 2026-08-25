@@ -8,11 +8,19 @@ export const DEFAULT_NOTIFIER_URL = "http://127.0.0.1:8765";
 
 export type JsonObject = Record<string, unknown>;
 
+export const MAX_OPEN_URI_LENGTH = 4096;
+export const OPEN_URI_SCHEMES = ["http:", "https:", "vscode:"] as const;
+
+export interface OpenUriAction {
+  type: "open-uri";
+  uri: string;
+}
+
 export interface NotificationRequest {
   title: string;
   body: string;
   source?: string;
-  url?: string;
+  action?: OpenUriAction;
   metadata?: JsonObject;
 }
 
@@ -65,6 +73,18 @@ export function isHttpUrl(value: string): boolean {
   }
 }
 
+export function isOpenUri(value: string): boolean {
+  if (value.length === 0 || value.length > MAX_OPEN_URI_LENGTH) {
+    return false;
+  }
+  try {
+    const uri = new URL(value);
+    return (OPEN_URI_SCHEMES as readonly string[]).includes(uri.protocol);
+  } catch {
+    return false;
+  }
+}
+
 export function validateNotificationRequest(
   value: unknown
 ): NotificationRequest {
@@ -81,13 +101,27 @@ export function validateNotificationRequest(
   }
 
   if (value.url !== undefined) {
-    const url = requireString(value.url, "url");
-    if (!isHttpUrl(url)) {
+    throw new InvalidNotificationRequestError(
+      "url is no longer supported; use action"
+    );
+  }
+
+  if (value.action !== undefined) {
+    if (!isJsonObject(value.action)) {
+      throw new InvalidNotificationRequestError("action must be a JSON object");
+    }
+    if (value.action.type !== "open-uri") {
       throw new InvalidNotificationRequestError(
-        "url must use the http or https protocol"
+        'action.type must be "open-uri"'
       );
     }
-    request.url = url;
+    const uri = requireString(value.action.uri, "action.uri");
+    if (!isOpenUri(uri)) {
+      throw new InvalidNotificationRequestError(
+        `action.uri must use http, https, or vscode and be at most ${MAX_OPEN_URI_LENGTH} characters`
+      );
+    }
+    request.action = { type: "open-uri", uri };
   }
 
   if (value.metadata !== undefined) {

@@ -88,6 +88,83 @@ describe("attentive CLI", () => {
     assert.match(output[0], /Usage: attentive notify/);
   });
 
+  it("uses the VS Code callback URI when no explicit URL is provided", async () => {
+    let body: unknown;
+    const exitCode = await run(
+      ["notify", "--title", "Build", "--body", "Done"],
+      {
+        env: {
+          ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
+          ATTENTIVE_VSCODE_CALLBACK_URI: "vscode://attentive.attentive-vscode/focus?window=source"
+        },
+        io: { stdout() {}, stderr() {} },
+        fetchImpl: async (_input, init) => {
+          body = JSON.parse(String(init?.body));
+          return new Response(JSON.stringify({ notificationId: "notification-2" }), { status: 201 });
+        }
+      }
+    );
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(body, {
+      title: "Build",
+      body: "Done",
+      action: {
+        type: "open-uri",
+        uri: "vscode://attentive.attentive-vscode/focus?window=source"
+      }
+    });
+  });
+
+  it("prefers an explicit URL without diagnosing the callback", async () => {
+    const errors: string[] = [];
+    let body: unknown;
+    const exitCode = await run(
+      ["notify", "--title", "Build", "--body", "Done", "--url", "https://example.com/result"],
+      {
+        env: {
+          ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
+          ATTENTIVE_VSCODE_CALLBACK_URI: "not a URI"
+        },
+        io: { stdout() {}, stderr: (message) => errors.push(message) },
+        fetchImpl: async (_input, init) => {
+          body = JSON.parse(String(init?.body));
+          return new Response(JSON.stringify({ notificationId: "notification-3" }), { status: 201 });
+        }
+      }
+    );
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(errors, []);
+    assert.deepEqual((body as { action: unknown }).action, {
+      type: "open-uri",
+      uri: "https://example.com/result"
+    });
+  });
+
+  it("warns and sends a plain notification for an invalid callback", async () => {
+    const errors: string[] = [];
+    let body: unknown;
+    const exitCode = await run(
+      ["notify", "--title", "Build", "--body", "Done"],
+      {
+        env: {
+          ATTENTIVE_NOTIFIER_URL: "http://127.0.0.1:8765",
+          ATTENTIVE_VSCODE_CALLBACK_URI: "file:///tmp/not-allowed"
+        },
+        io: { stdout() {}, stderr: (message) => errors.push(message) },
+        fetchImpl: async (_input, init) => {
+          body = JSON.parse(String(init?.body));
+          return new Response(JSON.stringify({ notificationId: "notification-4" }), { status: 201 });
+        }
+      }
+    );
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(errors, ["Warning: ignoring invalid ATTENTIVE_VSCODE_CALLBACK_URI"]);
+    assert.deepEqual(body, { title: "Build", body: "Done" });
+  });
+
   it("resolves notifier address in CLI, environment, config, and default order", async () => {
     const directory = await mkdtemp(join(tmpdir(), "attentive-cli-"));
     const configPath = join(directory, "config.json");

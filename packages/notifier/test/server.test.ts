@@ -28,7 +28,7 @@ describe("notifier HTTP server", () => {
           title: "Build complete",
           body: "The build passed",
           source: "test",
-          url: "https://example.com/build/1",
+          action: { type: "open-uri", uri: "https://example.com/build/1" },
           metadata: { buildId: 1 }
         })
       });
@@ -41,7 +41,7 @@ describe("notifier HTTP server", () => {
         title: "Build complete",
         body: "The build passed",
         source: "test",
-        url: "https://example.com/build/1",
+        action: { type: "open-uri", uri: "https://example.com/build/1" },
         metadata: { buildId: 1 }
       });
     } finally {

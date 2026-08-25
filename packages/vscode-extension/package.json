@@ -1,0 +1,35 @@
+{
+  "name": "attentive-vscode",
+  "displayName": "Attentive",
+  "description": "Routes Attentive notification clicks back to the source VS Code window.",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "attentive",
+  "type": "commonjs",
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "extensionKind": ["workspace"],
+  "activationEvents": ["*"],
+  "categories": ["Other"],
+  "files": ["dist", "README.md"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "attentive.showCallbackStatus",
+        "title": "Attentive: Show VS Code Callback Status"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsup src/extension.ts --format cjs --external vscode --clean",
+    "package:vsix": "pnpm run build && mkdir -p artifacts && vsce package --no-dependencies --out artifacts/attentive-vscode-0.1.0.vsix",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.100.0",
+    "@vscode/vsce": "^3.6.0"
+  }
+}

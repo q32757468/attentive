@@ -20,34 +20,44 @@ interface ToastNotifier {
 
 const toastNotifier = notifier as unknown as ToastNotifier;
 
+export interface WindowsToastDispatcherOptions {
+  notifier?: ToastNotifier;
+  openUri?: (uri: string) => void;
+  platform?: NodeJS.Platform;
+}
+
 /**
  * Windows implementation kept behind the dispatcher boundary so the HTTP service remains
  * testable on non-Windows hosts.
  */
-export function createWindowsToastDispatcher(): NotificationDispatcher {
+export function createWindowsToastDispatcher(
+  options: WindowsToastDispatcherOptions = {}
+): NotificationDispatcher {
+  const activeNotifier = options.notifier ?? toastNotifier;
+  const platform = options.platform ?? process.platform;
+  const openUri = options.openUri ?? openUriWithExplorer;
+
   return (request, _notificationId) => {
-    if (process.platform !== "win32") {
+    if (platform !== "win32") {
       return Promise.reject(new Error("Windows notifications require a Windows notifier host"));
     }
 
     let opened = false;
     const openRequestedUrl = () => {
-      if (!request.url || opened) {
+      if (!request.action || opened) {
         return;
       }
       opened = true;
-      openUrl(request.url);
+      openUri(request.action.uri);
     };
 
     try {
-      const toast = toastNotifier.notify(
+      const toast = activeNotifier.notify(
         {
           title: request.title,
           message: request.body,
           // `wait` lets node-notifier emit the activation event on Windows.
-          wait: Boolean(request.url),
-          // Windows SnoreToast ignores `open`, while other backends can use it directly.
-          open: request.url
+          wait: Boolean(request.action)
         },
         (error, _response, metadata) => {
           if (error) {
@@ -60,7 +70,7 @@ export function createWindowsToastDispatcher(): NotificationDispatcher {
         }
       );
 
-      if (request.url && toast && typeof toast.on === "function") {
+      if (request.action && toast && typeof toast.on === "function") {
         toast.on("click", openRequestedUrl);
       }
     } catch (error: unknown) {
@@ -77,13 +87,14 @@ function isClickMetadata(value: unknown): boolean {
     "activationType" in value && (value as { activationType?: unknown }).activationType === "click";
 }
 
-function openUrl(url: string): void {
-  const command = process.platform === "win32" ? "cmd.exe" : process.platform === "darwin" ? "open" : "xdg-open";
-  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
-  const child = spawn(command, args, {
+export function openUriWithExplorer(
+  uri: string,
+  spawnImpl: typeof spawn = spawn
+): void {
+  const child = spawnImpl("explorer.exe", [uri], {
     detached: true,
     stdio: "ignore",
-    windowsVerbatimArguments: process.platform === "win32"
+    shell: false
   });
   child.unref();
 }

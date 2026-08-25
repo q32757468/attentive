@@ -2,6 +2,7 @@
 
 import {
   isHttpUrl,
+  isOpenUri,
   validateNotificationRequest,
   type NotificationRequest
 } from "@attentive/protocol";
@@ -47,7 +48,7 @@ export async function run(
       return 0;
     }
 
-    const request = createRequest(parsed);
+    const request = createRequest(parsed, dependencies.env ?? process.env, io);
     const config = resolveCliConfig({
       cliNotifierUrl: parsed.notifierUrl,
       configPath: parsed.configPath,
@@ -140,7 +141,11 @@ function parseArgs(argv: readonly string[]): NotifyArgs {
   return result;
 }
 
-function createRequest(args: NotifyArgs): NotificationRequest {
+function createRequest(
+  args: NotifyArgs,
+  env: NodeJS.ProcessEnv,
+  io: CliIo
+): NotificationRequest {
   let metadata: unknown;
   if (args.metadata !== undefined) {
     try {
@@ -154,11 +159,23 @@ function createRequest(args: NotifyArgs): NotificationRequest {
     throw new Error("--url must use the http or https protocol");
   }
 
+  let action: NotificationRequest["action"];
+  if (args.url !== undefined) {
+    action = { type: "open-uri", uri: args.url };
+  } else if (env.ATTENTIVE_VSCODE_CALLBACK_URI !== undefined) {
+    const callbackUri = env.ATTENTIVE_VSCODE_CALLBACK_URI;
+    if (isOpenUri(callbackUri)) {
+      action = { type: "open-uri", uri: callbackUri };
+    } else {
+      io.stderr("Warning: ignoring invalid ATTENTIVE_VSCODE_CALLBACK_URI");
+    }
+  }
+
   return validateNotificationRequest({
     title: args.title,
     body: args.body,
     source: args.source,
-    url: args.url,
+    action,
     metadata
   });
 }

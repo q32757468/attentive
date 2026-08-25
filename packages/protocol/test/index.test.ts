@@ -4,6 +4,8 @@ import {
   ERROR_CODES,
   InvalidNotificationRequestError,
   isHttpUrl,
+  isOpenUri,
+  MAX_OPEN_URI_LENGTH,
   validateNotificationRequest
 } from "../src/index.js";
 
@@ -14,14 +16,14 @@ describe("notification protocol", () => {
         title: "构建完成",
         body: "任务执行成功",
         source: "ci",
-        url: "https://example.com/build/123",
+        action: { type: "open-uri", uri: "https://example.com/build/123" },
         metadata: { buildId: 123 }
       }),
       {
         title: "构建完成",
         body: "任务执行成功",
         source: "ci",
-        url: "https://example.com/build/123",
+        action: { type: "open-uri", uri: "https://example.com/build/123" },
         metadata: { buildId: 123 }
       }
     );
@@ -42,7 +44,7 @@ describe("notification protocol", () => {
       validateNotificationRequest({
         title: "Title",
         body: "Body",
-        url: "javascript:alert(1)"
+        action: { type: "open-uri", uri: "javascript:alert(1)" }
       })
     );
     assert.throws(() =>
@@ -59,5 +61,35 @@ describe("notification protocol", () => {
     assert.equal(isHttpUrl("https://example.com/path"), true);
     assert.equal(isHttpUrl("file:///tmp/example"), false);
     assert.equal(isHttpUrl("not a URL"), false);
+  });
+
+  it("accepts only bounded open URI schemes", () => {
+    assert.equal(isOpenUri("https://example.com/path"), true);
+    assert.equal(isOpenUri("vscode://attentive.attentive-vscode/focus?window=1"), true);
+    assert.equal(isOpenUri("file:///tmp/example"), false);
+    assert.equal(isOpenUri("javascript:alert(1)"), false);
+    assert.equal(isOpenUri(""), false);
+    assert.equal(isOpenUri(`https://example.com/${"a".repeat(MAX_OPEN_URI_LENGTH)}`), false);
+  });
+
+  it("rejects malformed actions", () => {
+    for (const action of [
+      "https://example.com",
+      { type: "run-command", uri: "https://example.com" },
+      { type: "open-uri", uri: "" }
+    ]) {
+      assert.throws(() => validateNotificationRequest({ title: "Title", body: "Body", action }));
+    }
+  });
+
+  it("rejects the replaced top-level url field", () => {
+    assert.throws(
+      () => validateNotificationRequest({
+        title: "Title",
+        body: "Body",
+        url: "https://example.com"
+      }),
+      /url is no longer supported; use action/
+    );
   });
 });
