@@ -4,14 +4,13 @@
 
 ## 尚未完成
 
-- [ ] 准备并加入 PNG 扩展图标（至少 128×128）。在
-      `packages/vscode-extension/package.json` 中增加 `icon` 字段，并确认图标目录包含在
-      `files` 白名单内。
+- [x] 已加入 PNG 扩展图标 `packages/vscode-extension/assets/icon.png`，并在
+      `packages/vscode-extension/package.json` 中配置 `icon` 字段及 `files` 白名单。
 - [ ] 在 Visual Studio Marketplace / Azure DevOps 注册 Publisher，确认 publisher ID
       `attentive` 可用；如果不可用，需要同步修改 manifest 中的 `publisher`。
 - [ ] 决定发布认证方式：短期手动发布可使用 Marketplace 要求的凭据；持续集成发布应配置
       Microsoft Entra ID 的安全自动化认证。
-- [ ] 确认扩展名称 `attentive-vscode` 未被占用，并确定公开发布版本号。
+- [x] 已通过 Visual Studio Marketplace 查询确认扩展名称 `attentive-vscode` 未被占用；仍需确定公开发布版本号。
 - [ ] 评估将 `activationEvents: ["*"]` 改为 `onStartupFinished`，验证不会影响终端环境变量注入，
       从而移除 `--allow-star-activation`。
 - [ ] 在干净环境中验证 `pnpm --dir packages/vscode-extension run package:vsix`，并安装生成的 VSIX
