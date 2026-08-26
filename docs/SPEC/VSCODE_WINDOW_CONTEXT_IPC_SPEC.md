@@ -136,7 +136,7 @@ export const MAX_WINDOW_CONTEXT_RESPONSE_BYTES = 8 * 1024;
 {
   "version": 1,
   "focused": false,
-  "callbackUri": "vscode://attentive.attentive-vscode/focus?..."
+  "callbackUri": "vscode://32757468.attentive-vscode/focus?..."
 }
 ```
 

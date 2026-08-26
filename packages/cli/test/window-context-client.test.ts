@@ -26,7 +26,7 @@ describe("window context IPC client", () => {
       response.end(JSON.stringify({
         version: 1,
         focused: false,
-        callbackUri: "vscode://attentive.attentive-vscode/focus?window=one"
+        callbackUri: "vscode://32757468.attentive-vscode/focus?window=one"
       }));
     });
 
@@ -37,7 +37,7 @@ describe("window context IPC client", () => {
         context: {
           version: 1,
           focused: false,
-          callbackUri: "vscode://attentive.attentive-vscode/focus?window=one"
+          callbackUri: "vscode://32757468.attentive-vscode/focus?window=one"
         }
       });
       assert.equal(requestMethod, "GET");

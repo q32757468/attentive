@@ -16,7 +16,7 @@ export const IPC_ENDPOINT_ENVIRONMENT_VARIABLE =
   WINDOW_CONTEXT_ENDPOINT_ENVIRONMENT_VARIABLE;
 export const IPC_ENDPOINT_ENVIRONMENT_DESCRIPTION =
   "Provides Attentive with a local VS Code window context endpoint";
-export const CALLBACK_BASE_URI = "vscode://attentive.attentive-vscode/focus";
+export const CALLBACK_BASE_URI = "vscode://32757468.attentive-vscode/focus";
 export const STATUS_COMMAND = "attentive.showCallbackStatus";
 const LEGACY_CALLBACK_ENVIRONMENT_VARIABLE = "ATTENTIVE_VSCODE_CALLBACK_URI";
 

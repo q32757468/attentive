@@ -17,7 +17,7 @@ describe("window context IPC server", () => {
       getContext: () => ({
         version: 1,
         focused,
-        callbackUri: "vscode://attentive.attentive-vscode/focus?window=server"
+        callbackUri: "vscode://32757468.attentive-vscode/focus?window=server"
       }),
       logger: { error() {} }
     });
@@ -31,7 +31,7 @@ describe("window context IPC server", () => {
         body: {
           version: 1,
           focused: false,
-          callbackUri: "vscode://attentive.attentive-vscode/focus?window=server"
+          callbackUri: "vscode://32757468.attentive-vscode/focus?window=server"
         }
       });
 
@@ -42,7 +42,7 @@ describe("window context IPC server", () => {
         body: {
           version: 1,
           focused: true,
-          callbackUri: "vscode://attentive.attentive-vscode/focus?window=server"
+          callbackUri: "vscode://32757468.attentive-vscode/focus?window=server"
         }
       });
       assert.equal((await requestOverSocket(socketPath, "GET", "/other")).status, 404);

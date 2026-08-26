@@ -25,12 +25,12 @@ describe("Windows toast actions", () => {
     await dispatcher({
       title: "Build",
       body: "Done",
-      action: { type: "open-uri", uri: "vscode://attentive.attentive-vscode/focus" }
+      action: { type: "open-uri", uri: "vscode://32757468.attentive-vscode/focus" }
     }, "notification-1");
     callback?.(null, undefined, { activationType: "click" });
     click?.();
 
-    assert.deepEqual(opened, ["vscode://attentive.attentive-vscode/focus"]);
+    assert.deepEqual(opened, ["vscode://32757468.attentive-vscode/focus"]);
   });
 
   it("uses explorer.exe with an argument array and no shell", () => {
@@ -40,10 +40,10 @@ describe("Windows toast actions", () => {
       return { unref() {} };
     }) as never;
 
-    openUriWithExplorer("vscode://attentive.attentive-vscode/focus?a=1&b=2", fakeSpawn);
+    openUriWithExplorer("vscode://32757468.attentive-vscode/focus?a=1&b=2", fakeSpawn);
 
     assert.equal(invocation?.command, "explorer.exe");
-    assert.deepEqual(invocation?.args, ["vscode://attentive.attentive-vscode/focus?a=1&b=2"]);
+    assert.deepEqual(invocation?.args, ["vscode://32757468.attentive-vscode/focus?a=1&b=2"]);
     assert.equal(invocation?.options.shell, false);
   });
 });

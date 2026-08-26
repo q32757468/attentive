@@ -175,7 +175,7 @@ attentive notify --title "..." --body "..."
 
 ## 10. VS Code 扩展
 
-- Extension ID 为 `attentive.attentive-vscode`；
+- Extension ID 为 `32757468.attentive-vscode`；
 - 使用 `*` 激活，激活逻辑必须轻量；
 - 声明为 workspace extension；
 - 注册 `/focus` URI handler；

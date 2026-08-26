@@ -70,8 +70,8 @@ VS Code Stable 窗口
 package:      packages/vscode-extension
 package name: attentive-vscode
 name:         attentive-vscode
-publisher:    attentive
-extension id: attentive.attentive-vscode
+publisher:    32757468
+extension id: 32757468.attentive-vscode
 ```
 
 首版只构建本地 VSIX。Extension ID 必须保持稳定，因为它是 callback URI authority 的一部分。
@@ -92,7 +92,7 @@ extension id: attentive.attentive-vscode
 扩展注册一个 handler，并只接受 `/focus`：
 
 ```text
-vscode://attentive.attentive-vscode/focus
+vscode://32757468.attentive-vscode/focus
 ```
 
 该基础 URI 必须先交给 `vscode.env.asExternalUri`，环境变量保存返回值的完整字符串，不能自行拼接或删除 query 参数。

@@ -106,7 +106,7 @@ describe("attentive CLI", () => {
             context: {
               version: 1,
               focused: false,
-              callbackUri: "vscode://attentive.attentive-vscode/focus?window=source"
+              callbackUri: "vscode://32757468.attentive-vscode/focus?window=source"
             }
           };
         },
@@ -124,7 +124,7 @@ describe("attentive CLI", () => {
       body: "Done",
       action: {
         type: "open-uri",
-        uri: "vscode://attentive.attentive-vscode/focus?window=source"
+        uri: "vscode://32757468.attentive-vscode/focus?window=source"
       }
     });
   });
@@ -148,7 +148,7 @@ describe("attentive CLI", () => {
             context: {
               version: 1,
               focused: false,
-              callbackUri: "vscode://attentive.attentive-vscode/focus?window=source"
+              callbackUri: "vscode://32757468.attentive-vscode/focus?window=source"
             }
           };
         },

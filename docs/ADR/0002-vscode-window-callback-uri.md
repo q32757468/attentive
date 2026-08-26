@@ -17,7 +17,7 @@ VS Code 扩展可以注册 URI handler，并通过 `vscode.env.asExternalUri` �
 
 新增 `packages/vscode-extension`。每个 VS Code Stable 窗口中的扩展实例：
 
-1. 注册 `vscode://attentive.attentive-vscode/focus` 的 URI handler；
+1. 注册 `vscode://32757468.attentive-vscode/focus` 的 URI handler；
 2. 使用 `vscode.env.asExternalUri` 生成该窗口的完整 callback URI；
 3. 通过持久化的 `environmentVariableCollection` 将它写入 `ATTENTIVE_VSCODE_CALLBACK_URI`，使 VS Code 重载时恢复的终端可以直接使用缓存贡献；
 4. 新建或重启的集成终端获得该变量；窗口重载时由 VS Code 恢复的终端复用持久化贡献。
@@ -30,7 +30,7 @@ CLI 在用户没有显式传入 `--url` 时读取该变量。缺失时继续发�
 {
   "action": {
     "type": "open-uri",
-    "uri": "vscode://attentive.attentive-vscode/focus?..."
+    "uri": "vscode://32757468.attentive-vscode/focus?..."
   }
 }
 ```

@@ -68,7 +68,7 @@ describe("notification protocol", () => {
 
   it("accepts only bounded open URI schemes", () => {
     assert.equal(isOpenUri("https://example.com/path"), true);
-    assert.equal(isOpenUri("vscode://attentive.attentive-vscode/focus?window=1"), true);
+    assert.equal(isOpenUri("vscode://32757468.attentive-vscode/focus?window=1"), true);
     assert.equal(isOpenUri("file:///tmp/example"), false);
     assert.equal(isOpenUri("javascript:alert(1)"), false);
     assert.equal(isOpenUri(""), false);
@@ -101,12 +101,12 @@ describe("notification protocol", () => {
       parseWindowContextResponse({
         version: WINDOW_CONTEXT_VERSION,
         focused: true,
-        callbackUri: "vscode://attentive.attentive-vscode/focus?window=one"
+        callbackUri: "vscode://32757468.attentive-vscode/focus?window=one"
       }),
       {
         version: WINDOW_CONTEXT_VERSION,
         focused: true,
-        callbackUri: "vscode://attentive.attentive-vscode/focus?window=one"
+        callbackUri: "vscode://32757468.attentive-vscode/focus?window=one"
       }
     );
   });

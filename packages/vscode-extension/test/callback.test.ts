@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   activateCallbackExtension,
   CALLBACK_BASE_URI,
@@ -16,6 +17,17 @@ import type {
 } from "../src/window-context-server.js";
 
 describe("VS Code window context extension", () => {
+  it("uses the extension manifest ID as the callback authority", () => {
+    const manifest = JSON.parse(
+      readFileSync("package.json", "utf8")
+    ) as { name: string; publisher: string };
+
+    assert.equal(
+      new URL(CALLBACK_BASE_URI).host,
+      `${manifest.publisher}.${manifest.name}`
+    );
+  });
+
   it("handles only the /focus callback path", () => {
     let focusCount = 0;
     const handler = createFocusUriHandler(() => focusCount += 1);
@@ -51,7 +63,7 @@ describe("VS Code window context extension", () => {
       environmentVariableCollection: collection,
       subscriptions: { push(...items) { subscriptions.push(...items); } }
     };
-    const externalValue = "vscode://attentive.attentive-vscode/focus?windowId=opaque%26value";
+    const externalValue = "vscode://32757468.attentive-vscode/focus?windowId=opaque%26value";
     const api = createApi({
       focused: () => focused,
       parsedUri: (value) => parsedUri = value,
@@ -108,7 +120,7 @@ describe("VS Code window context extension", () => {
     let focused = false;
     let serverOptions: WindowContextServerOptions | undefined;
     const server = fakeServer("/tmp/attentive-window.sock");
-    const setup = createTestSetup(() => focused, "vscode://attentive.attentive-vscode/focus?window=two");
+    const setup = createTestSetup(() => focused, "vscode://32757468.attentive-vscode/focus?window=two");
     await activateCallbackExtension(setup.context, setup.api, {
       startServer: async (options) => {
         serverOptions = options;
@@ -126,7 +138,7 @@ describe("VS Code window context extension", () => {
     const persisted = "\\\\.\\pipe\\attentive-vscode-0123456789abcdef0123456789abcdef-sock";
     const setup = createTestSetup(
       () => false,
-      "vscode://attentive.attentive-vscode/focus?window=reloaded",
+      "vscode://32757468.attentive-vscode/focus?window=reloaded",
       persisted
     );
     let capturedEndpoint: WindowContextServerOptions["endpoint"];
@@ -148,7 +160,7 @@ describe("VS Code window context extension", () => {
     const replacement = "\\\\.\\pipe\\attentive-vscode-fedcba9876543210fedcba9876543210-sock";
     const setup = createTestSetup(
       () => false,
-      "vscode://attentive.attentive-vscode/focus?window=fallback",
+      "vscode://32757468.attentive-vscode/focus?window=fallback",
       persisted
     );
     const attemptedEndpoints: Array<WindowContextServerOptions["endpoint"]> = [];
