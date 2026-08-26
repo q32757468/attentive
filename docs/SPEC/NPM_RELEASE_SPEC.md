@@ -25,7 +25,7 @@ CLI 版本与 GitHub Release tag 一一对应：
 
 ```text
 @attentive-kit/cli  X.Y.Z
-GitHub Release tag  vX.Y.Z
+GitHub Release tag  cli-vX.Y.Z
 ```
 
 protocol 的 workspace 版本不参与 npm Release tag 校验，也不因 CLI 发布而要求同步升级。
@@ -43,7 +43,7 @@ protocol 的 workspace 版本不参与 npm Release tag 校验，也不因 CLI �
   │ main CI 通过
   ▼
 维护者创建并发布 GitHub Release
-  │ tag: vX.Y.Z，target: 版本 PR 的合并提交
+  │ tag: cli-vX.Y.Z，target: 版本 PR 的合并提交
   ▼
 release.published 触发 GitHub Actions
   │ 校验 → 测试 → 构建 → 打包 → smoke test
@@ -85,7 +85,7 @@ release: vX.Y.Z
 版本 PR 合并且 `main` CI 通过后，维护者在 GitHub 人工创建 Release：
 
 ```text
-Tag:    vX.Y.Z
+Tag:    cli-vX.Y.Z
 Target: main 上版本 PR 的合并提交
 ```
 
@@ -109,7 +109,7 @@ on:
 - 保存或修改 Draft Release；
 - 手工重新运行一个版本不匹配的 workflow。
 
-首版只支持正式版本。GitHub prerelease 或非 `vX.Y.Z` 格式 tag 必须失败，不得隐式发布到 `latest` 或其他 dist-tag。预发布版本及 `next` dist-tag 另行设计。
+首版只支持正式版本。GitHub prerelease 或非 `cli-vX.Y.Z` 格式 tag 必须失败，不得隐式发布到 `latest` 或其他 dist-tag。预发布版本及 `next` dist-tag 另行设计。
 
 ## 6. 发布前校验
 
@@ -117,7 +117,7 @@ Action 必须 checkout Release tag 对应的精确提交，而不是运行时最
 
 发布前必须完成以下校验：
 
-1. Release tag 严格匹配 `vX.Y.Z`；
+1. Release tag 严格匹配 `cli-vX.Y.Z`；
 2. 从 tag 提取的版本严格等于 `packages/cli/package.json` 的 `version`；
 3. Release 不是 draft 或 prerelease；
 4. lockfile 未因安装、构建或打包产生未提交变化；
@@ -189,7 +189,7 @@ npm 上的 CLI 包必须配置 Trusted Publisher：
 ```text
 GitHub owner:      q32757468
 GitHub repository: attentive
-Workflow filename: publish-npm.yml
+Workflow filename: publish-cli.yml
 Environment:       npm
 Allowed action:    npm publish
 ```
@@ -229,7 +229,7 @@ protocol 必须保持内部包定位。实现时应使用 `private: true` 防止
 
 1. 确认或创建 npm `@attentive-kit` organization，并确认发布权限；
 2. 使用维护者本地登录、2FA 或临时 granular access token，将 CLI 首次发布为 public；
-3. 在 CLI package settings 中绑定 `publish-npm.yml` 和 `npm` Environment；
+3. 在 CLI package settings 中绑定 `publish-cli.yml` 和 `npm` Environment；
 4. 运行一次后续版本的 OIDC 发布验证；
 5. 验证成功后撤销临时 publish token，并可在 npm 中禁止传统 token 发布。
 

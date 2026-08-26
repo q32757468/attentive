@@ -5,7 +5,7 @@
 配套文件：
 
 - 发布规格：[`docs/SPEC/NPM_RELEASE_SPEC.md`](./SPEC/NPM_RELEASE_SPEC.md)
-- 发布工作流：[`.github/workflows/publish-npm.yml`](../.github/workflows/publish-npm.yml)
+- 发布工作流：[`.github/workflows/publish-cli.yml`](../.github/workflows/publish-cli.yml)
 - CLI manifest：[`packages/cli/package.json`](../packages/cli/package.json)
 
 > npm 的同名同版本不可覆盖。执行发布命令前，请逐项确认版本、commit 和 tarball；任何一步出现不符合预期的结果都应先停止排查。
@@ -34,7 +34,7 @@
   git push origin main
   ```
 
-- [ ] 打开 GitHub 仓库，确认 `.github/workflows/publish-npm.yml` 已存在于 `main`。
+- [ ] 打开 GitHub 仓库，确认 `.github/workflows/publish-cli.yml` 已存在于 `main`。
 
 ## 第二阶段：配置 GitHub Environment
 
@@ -55,7 +55,7 @@
 - [ ] 按需配置 Required reviewers。
 - [ ] 不添加 `NPM_TOKEN` 或 `NODE_AUTH_TOKEN` secret。
 
-Environment 名称区分配置值，必须与 `publish-npm.yml` 和 npm Trusted Publisher 中的 `npm` 完全一致。
+Environment 名称区分配置值，必须与 `publish-cli.yml` 和 npm Trusted Publisher 中的 `npm` 完全一致。
 
 参考：[GitHub Environments 官方文档](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments)
 
@@ -117,7 +117,7 @@ npm package 创建前没有 package settings 页面，因此无法提前绑定 T
   git rev-parse HEAD
   ```
 
-  保存该 SHA，后面创建 `v0.1.0` GitHub Release 时需要选择这个 commit。
+  保存该 SHA，后面创建 `cli-v0.1.0` GitHub Release 时需要选择这个 commit。
 
 - [ ] 确认 CLI 版本：
 
@@ -233,18 +233,18 @@ npm package 创建前没有 package settings 页面，因此无法提前绑定 T
   ```text
   Organization or user: q32757468
   Repository:           attentive
-  Workflow filename:    publish-npm.yml
+  Workflow filename:    publish-cli.yml
   Environment:          npm
   Allowed actions:      npm publish
   ```
 
-`Workflow filename` 只填写 `publish-npm.yml`，不要填写 `.github/workflows/publish-npm.yml`。
+`Workflow filename` 只填写 `publish-cli.yml`，不要填写 `.github/workflows/publish-cli.yml`。
 
 - [ ] 保存配置并重新打开页面，确认字段无误。
 
 参考：[npm Trusted Publishing 官方文档](https://docs.npmjs.com/trusted-publishers/)
 
-## 第六阶段：补建 `v0.1.0` GitHub Release
+## 第六阶段：补建 `cli-v0.1.0` GitHub Release
 
 ### 10. 为首次人工发布建立对应 Release
 
@@ -257,7 +257,7 @@ npm package 创建前没有 package settings 页面，因此无法提前绑定 T
 - [ ] 填写：
 
   ```text
-  Tag:        v0.1.0
+  Tag:        cli-v0.1.0
   Target:     第 5 步记录的 commit
   Prerelease: 不勾选
   ```
@@ -266,7 +266,7 @@ npm package 创建前没有 package settings 页面，因此无法提前绑定 T
 - [ ] 点击 `Publish release`。
 - [ ] 如果 `npm` Environment 配置了 reviewer，在 Actions 页面批准 deployment。
 
-`publish-npm.yml` 会重新构建 tarball。因为 `0.1.0` 已经人工发布：
+`publish-cli.yml` 会重新构建 tarball。因为 `0.1.0` 已经人工发布：
 
 - registry integrity 与当前 tarball 相同：安全跳过 `npm publish`，workflow 成功；
 - integrity 不同或无法确认：workflow 失败，此时不要尝试覆盖版本，应先排查构建差异。
@@ -313,12 +313,12 @@ npm package 创建前没有 package settings 页面，因此无法提前绑定 T
 
 当前仓库暂未配置单独的常规 CI workflow，因此合并前必须确认上述本地检查全部通过；未来增加 CI 门禁后，应等待 required checks 通过再合并。
 
-### 12. 发布 `v0.1.1` GitHub Release
+### 12. 发布 `cli-v0.1.1` GitHub Release
 
 - [ ] 创建正式 GitHub Release：
 
   ```text
-  Tag:        v0.1.1
+  Tag:        cli-v0.1.1
   Target:     版本 PR 合并后的 commit
   Prerelease: 不勾选
   ```
@@ -358,7 +358,7 @@ OIDC 验证成功后，每次发布只需要：
 2. 执行 typecheck、test 和 build；
 3. 审查并合并到 `main`；
 4. 创建与版本严格对应的正式 GitHub Release；
-5. 等待 `publish-npm.yml` 完成；
+5. 等待 `publish-cli.yml` 完成；
 6. 使用 `npm view` 和 `npx` 验证。
 
 不得通过以下方式发布：
@@ -383,7 +383,7 @@ OIDC 验证成功后，每次发布只需要：
 ```text
 Owner:       q32757468
 Repository:  attentive
-Workflow:    publish-npm.yml
+Workflow:    publish-cli.yml
 Environment: npm
 Action:      npm publish
 ```
