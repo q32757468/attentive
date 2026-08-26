@@ -1,4 +1,4 @@
-name: Publish CLI to npm
+name: Publish packages to npm
 
 on:
   release:

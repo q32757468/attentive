@@ -189,7 +189,7 @@ npm 上的 CLI 包必须配置 Trusted Publisher：
 ```text
 GitHub owner:      q32757468
 GitHub repository: attentive
-Workflow filename: publish.yml
+Workflow filename: publish-npm.yml
 Environment:       npm
 Allowed action:    npm publish
 ```
@@ -229,7 +229,7 @@ protocol 必须保持内部包定位。实现时应使用 `private: true` 防止
 
 1. 确认或创建 npm `@attentive-kit` organization，并确认发布权限；
 2. 使用维护者本地登录、2FA 或临时 granular access token，将 CLI 首次发布为 public；
-3. 在 CLI package settings 中绑定 `publish.yml` 和 `npm` Environment；
+3. 在 CLI package settings 中绑定 `publish-npm.yml` 和 `npm` Environment；
 4. 运行一次后续版本的 OIDC 发布验证；
 5. 验证成功后撤销临时 publish token，并可在 npm 中禁止传统 token 发布。
 
