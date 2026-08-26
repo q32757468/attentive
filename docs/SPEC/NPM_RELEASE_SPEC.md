@@ -246,6 +246,8 @@ npm 的同名同版本不可覆盖。为使“npm 已发布成功但 workflow �
 - 版本已存在且 registry tarball integrity 与本次生成的 tarball 一致时跳过发布；
 - 如果 registry 已存在的版本与当前 tarball 无法确认一致，workflow 必须失败并要求人工处理。
 
+对于本次新版本发布，`npm publish` 成功退出即视为发布事务成功。由于 npm registry 的 package metadata、tarball CDN 和搜索索引可能存在短暂传播延迟，workflow 不得在 `npm publish` 后立即通过 `npm view` 或安装结果反向判定本次发布失败。registry 可见性、`npx` 安装和 provenance 作为发布后人工验收项。
+
 不得通过自动递增版本绕过失败，也不得在失败的 Release 上静默发布另一个版本。
 
 ## 12. 安全要求
