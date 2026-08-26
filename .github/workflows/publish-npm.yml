@@ -224,8 +224,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          published_integrity="$(npm view "$EXPECTED_PACKAGE_NAME@$PACKAGE_VERSION" dist.integrity --json --registry="$EXPECTED_REGISTRY")"
-          published_integrity="$(node -e 'const value = JSON.parse(process.argv[1]); if (typeof value !== "string") process.exit(1); process.stdout.write(value)' "$published_integrity")"
+          published_integrity=""
+          for attempt in {1..12}; do
+            if raw_integrity="$(npm view "$EXPECTED_PACKAGE_NAME@$PACKAGE_VERSION" dist.integrity --json --registry="$EXPECTED_REGISTRY" 2>/dev/null)" && \
+              parsed_integrity="$(node -e 'const value = JSON.parse(process.argv[1]); if (typeof value !== "string") process.exit(1); process.stdout.write(value)' "$raw_integrity")"; then
+              published_integrity="$parsed_integrity"
+              break
+            fi
+
+            if (( attempt < 12 )); then
+              echo "Waiting for npm registry metadata ($attempt/12)..."
+              sleep 5
+            fi
+          done
+
+          if [[ -z "$published_integrity" ]]; then
+            echo "Published npm integrity was not available after waiting for registry propagation." >&2
+            exit 1
+          fi
           if [[ "$published_integrity" != "$TARBALL_INTEGRITY" ]]; then
             echo "Published npm integrity does not match the generated tarball." >&2
             exit 1
