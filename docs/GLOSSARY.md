@@ -44,7 +44,7 @@ CLI 从来源 VS Code 窗口主动查询 Window Context 的本地通信通道。
 
 ## `ATTENTIVE_VSCODE_IPC_ENDPOINT`
 
-VS Code 扩展向随后创建或重启的集成终端贡献的非持久环境变量。值是当前 Extension Host 激活期间的 opaque socket 或 pipe 地址。它用于定位 Window Context IPC，不是稳定窗口 ID，也不作为应用层认证凭据。
+VS Code 扩展向集成终端贡献的持久环境变量。值是 opaque socket 或 pipe 地址；普通单窗口 reload 后扩展会重新监听同一地址，使恢复终端可以继续查询。它用于定位 Window Context IPC，不是跨窗口身份，也不作为应用层认证凭据。
 
 ## Focused
 

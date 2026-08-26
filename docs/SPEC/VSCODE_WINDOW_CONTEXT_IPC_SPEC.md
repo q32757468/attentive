@@ -201,14 +201,14 @@ Unix 目录选择顺序：
 2. 创建 server；
 3. 等待 `listening`；
 4. Unix 平台把 socket 文件权限收紧为 `0600`；如果无法建立要求的权限，则关闭 server 且不注入 endpoint；
-5. 设置非持久环境贡献；
+5. 设置持久环境贡献；
 6. Extension Host 停用时停止接收连接；
 7. 等待已有短连接结束或销毁；
 8. 非 Windows 平台 best-effort unlink 本实例拥有的 socket 文件。
 
-不得尝试复用、推导或重占上次 endpoint。不得看到同名 socket 就直接 unlink。
+只允许复用由本扩展持久 environment contribution 返回、且通过格式、目录所有者和权限校验的 endpoint。不得从 workspace 信息推导地址，也不得看到同名 socket 就直接 unlink；无法重新监听时必须回退到新的随机 endpoint。
 
-窗口重载后恢复的旧 shell 仍可能持有旧 endpoint。该行为属于已接受限制：查询失败并 fail-open；新建或重启终端获得新 endpoint 后恢复完整能力。
+普通单窗口重载后，新 Extension Host 必须优先校验并重新监听缓存的 endpoint，使恢复 shell 保持可用。校验或重绑失败时生成新 endpoint，旧 shell 查询失败并 fail-open；新建或重启终端获得新 endpoint 后恢复完整能力。
 
 ### 5.3 server 限制
 
@@ -252,12 +252,12 @@ src/
 建议顺序：
 
 1. 取得 `environmentVariableCollection`；
-2. 设 `persistent = false`；
+2. 设 `persistent = true`，读取并校验缓存的 IPC endpoint；
 3. 删除旧 `ATTENTIVE_VSCODE_CALLBACK_URI`；
 4. 注册 `/focus` URI handler；
 5. 注册或扩展现有诊断命令；
 6. 调用 `asExternalUri(CALLBACK_BASE_URI)`；失败时记录诊断，但允许 `callbackUri` 为 `undefined`；
-7. 创建 Window Context server，handler 每次请求即时读取 `vscode.window.state.focused`；
+7. 优先在有效缓存 endpoint 上创建 Window Context server，handler 每次请求即时读取 `vscode.window.state.focused`；重绑失败时改用新随机 endpoint；
 8. 等待 server listening；
 9. 注入 `ATTENTIVE_VSCODE_IPC_ENDPOINT`；
 10. 把 server disposer 加入 `context.subscriptions`。
@@ -424,7 +424,7 @@ type WindowContextQueryResult =
 
 至少覆盖：
 
-- collection 设为非持久；
+- collection 设为持久，并覆盖缓存 endpoint 的安全复用；
 - 删除旧 callback contribution；
 - server listening 前不注入 endpoint；
 - listening 后只注入当前 endpoint；
@@ -481,7 +481,7 @@ VS Code API、filesystem、platform、random ID 和 server factory 应可注入�
 5. 两个空窗口：endpoint 和 callback 不串窗；
 6. 显式 `--url`：聚焦时仍抑制，失焦时打开显式网页；
 7. 关闭或禁用扩展：CLI fail-open；
-8. Extension Host/window reload：旧恢复终端 fail-open；
+8. Extension Host/window reload：普通单窗口下旧恢复终端继续查询；重绑失败时 fail-open；
 9. 新建或重启终端：重新获得 endpoint 并恢复查询；
 10. Notifier 不可达：聚焦时抑制成功，失焦或查询失败时保持原连接错误；
 11. 状态诊断不泄漏 endpoint 和 Callback URI。

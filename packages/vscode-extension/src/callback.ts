@@ -5,6 +5,7 @@ import {
   type WindowContextResponse
 } from "@attentive-kit/protocol";
 import type { IpcEndpointOptions } from "./ipc-endpoint.js";
+import { restoreIpcEndpoint } from "./ipc-endpoint.js";
 import {
   startWindowContextServer,
   type WindowContextServer,
@@ -37,6 +38,7 @@ interface EnvironmentVariableCollectionLike {
   description?: string | MarkdownStringLike;
   persistent: boolean;
   replace(variable: string, value: string): void;
+  get(variable: string): { readonly value: string } | undefined;
   delete(variable: string): void;
 }
 
@@ -89,7 +91,7 @@ export async function activateCallbackExtension(
   context: CallbackExtensionContext,
   vscode: CallbackVscodeApi,
   options: CallbackActivationOptions = {}
-): Promise<void> {
+): Promise<{ dispose(): Promise<void> }> {
   const collection = context.environmentVariableCollection;
   const now = options.now ?? (() => new Date());
   const diagnostic: CallbackDiagnosticState = {
@@ -99,12 +101,15 @@ export async function activateCallbackExtension(
     diagnostic.lastError = { category, at: now() };
   };
 
-  collection.persistent = false;
+  collection.persistent = true;
   collection.description = IPC_ENDPOINT_ENVIRONMENT_DESCRIPTION;
   // This deletion is intentional cleanup of the pre-IPC contribution. There
   // is no compatibility read or fallback for old terminal environments.
   collection.delete(LEGACY_CALLBACK_ENVIRONMENT_VARIABLE);
-  collection.delete(IPC_ENDPOINT_ENVIRONMENT_VARIABLE);
+  const persistedEndpoint = await restoreIpcEndpoint(
+    collection.get(IPC_ENDPOINT_ENVIRONMENT_VARIABLE)?.value ?? "",
+    options.endpointOptions
+  );
 
   context.subscriptions.push(
     vscode.window.registerUriHandler(createFocusUriHandler()),
@@ -132,9 +137,12 @@ export async function activateCallbackExtension(
   }
 
   const startServer = options.startServer ?? startWindowContextServer;
+  let activeServer: WindowContextServer | undefined;
   try {
-    const server = await startServer({
+    const serverOptions = (endpoint: WindowContextServerOptions["endpoint"]): WindowContextServerOptions => ({
+      endpoint,
       endpointOptions: options.endpointOptions,
+      preservePrivateDirectory: true,
       getContext: () => {
         const contextValue: WindowContextResponse = {
           version: WINDOW_CONTEXT_VERSION,
@@ -147,6 +155,17 @@ export async function activateCallbackExtension(
       },
       onError: reportError
     });
+    let server: WindowContextServer;
+    try {
+      server = await startServer(serverOptions(persistedEndpoint));
+    } catch (error: unknown) {
+      if (persistedEndpoint === undefined) {
+        throw error;
+      }
+      reportError("persisted-endpoint-start-failed");
+      server = await startServer(serverOptions(undefined));
+    }
+    activeServer = server;
     diagnostic.server = server;
     try {
       // startServer only resolves after the endpoint is listening and, for a
@@ -156,6 +175,7 @@ export async function activateCallbackExtension(
     } catch {
       reportError("endpoint-contribution-failed");
       diagnostic.server = undefined;
+      activeServer = undefined;
       await server.dispose();
       collection.delete(IPC_ENDPOINT_ENVIRONMENT_VARIABLE);
     }
@@ -163,6 +183,12 @@ export async function activateCallbackExtension(
     reportError("server-start-failed");
     collection.delete(IPC_ENDPOINT_ENVIRONMENT_VARIABLE);
   }
+
+  return {
+    async dispose() {
+      await activeServer?.dispose();
+    }
+  };
 }
 
 function formatDiagnosticStatus(

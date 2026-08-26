@@ -6,7 +6,8 @@ import { tmpdir } from "node:os";
 import {
   MAX_UNIX_SOCKET_PATH_LENGTH,
   cleanupIpcEndpoint,
-  createIpcEndpoint
+  createIpcEndpoint,
+  restoreIpcEndpoint
 } from "../src/ipc-endpoint.js";
 
 describe("VS Code IPC endpoint generation", () => {
@@ -74,5 +75,47 @@ describe("VS Code IPC endpoint generation", () => {
     const first = await createIpcEndpoint({ platform: "win32" });
     const second = await createIpcEndpoint({ platform: "win32" });
     assert.notEqual(first.value, second.value);
+  });
+
+  it("restores only an Attentive named pipe on Windows", async () => {
+    const value = "\\\\.\\pipe\\attentive-vscode-0123456789abcdef0123456789abcdef-sock";
+    assert.deepEqual(await restoreIpcEndpoint(value, { platform: "win32" }), {
+      kind: "pipe",
+      value
+    });
+    assert.equal(
+      await restoreIpcEndpoint("\\\\.\\pipe\\another-extension", { platform: "win32" }),
+      undefined
+    );
+  });
+
+  it("restores a socket only while its private directory remains secure", async () => {
+    const tempDirectory = await mkdtemp(join(tmpdir(), "attentive-restore-"));
+    try {
+      const endpoint = await createIpcEndpoint({
+        platform: "linux",
+        env: {},
+        tempDirectory: () => tempDirectory,
+        currentUid: () => process.getuid?.()
+      });
+      assert.deepEqual(await restoreIpcEndpoint(endpoint.value, {
+        platform: "linux",
+        env: {},
+        tempDirectory: () => tempDirectory,
+        currentUid: () => process.getuid?.()
+      }), { kind: "socket", value: endpoint.value });
+
+      await chmod(endpoint.privateDirectory ?? "", 0o755);
+      assert.equal(await restoreIpcEndpoint(endpoint.value, {
+        platform: "linux",
+        env: {},
+        tempDirectory: () => tempDirectory,
+        currentUid: () => process.getuid?.()
+      }), undefined);
+      await chmod(endpoint.privateDirectory ?? "", 0o700);
+      await cleanupIpcEndpoint(endpoint);
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
   });
 });

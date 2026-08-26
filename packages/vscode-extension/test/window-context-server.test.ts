@@ -4,6 +4,7 @@ import { request } from "node:http";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { restoreIpcEndpoint } from "../src/ipc-endpoint.js";
 import { startWindowContextServer } from "../src/window-context-server.js";
 
 describe("window context IPC server", () => {
@@ -94,6 +95,50 @@ describe("window context IPC server", () => {
     } finally {
       await first.dispose();
       await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves a generated private directory for endpoint reuse", async () => {
+    const root = await mkdtemp(join(tmpdir(), "attentive-preserve-"));
+    const endpointOptions = {
+      platform: "linux" as const,
+      env: {},
+      tempDirectory: () => root,
+      currentUid: () => process.getuid?.()
+    };
+    const server = await startWindowContextServer({
+      endpointOptions,
+      preservePrivateDirectory: true,
+      getContext: () => ({ version: 1, focused: false }),
+      logger: { error() {} }
+    });
+    const directory = server.endpoint.privateDirectory;
+
+    try {
+      assert.notEqual(directory, undefined);
+      await server.dispose();
+      await assert.rejects(() => stat(server.endpoint.value));
+      assert.equal((await stat(directory ?? "")).isDirectory(), true);
+
+      const restoredEndpoint = await restoreIpcEndpoint(server.endpoint.value, endpointOptions);
+      assert.notEqual(restoredEndpoint, undefined);
+      const restoredServer = await startWindowContextServer({
+        endpoint: restoredEndpoint,
+        endpointOptions,
+        preservePrivateDirectory: true,
+        getContext: () => ({ version: 1, focused: true }),
+        logger: { error() {} }
+      });
+      try {
+        assert.deepEqual(
+          (await requestOverSocket(server.endpoint.value, "GET", "/v1/window-context")).body,
+          { version: 1, focused: true }
+        );
+      } finally {
+        await restoredServer.dispose();
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
     }
   });
 });

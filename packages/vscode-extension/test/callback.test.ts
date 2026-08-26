@@ -44,6 +44,7 @@ describe("VS Code window context extension", () => {
       description: undefined as string | undefined,
       persistent: true,
       replace(name: string, value: string) { replacements.push([name, value]); },
+      get() { return undefined; },
       delete(name: string) { deletions.push(name); }
     };
     const context: CallbackExtensionContext = {
@@ -77,12 +78,11 @@ describe("VS Code window context extension", () => {
     await activation;
 
     assert.equal(parsedUri, CALLBACK_BASE_URI);
-    assert.equal(collection.persistent, false);
+    assert.equal(collection.persistent, true);
     assert.equal(collection.description, IPC_ENDPOINT_ENVIRONMENT_DESCRIPTION);
     assert.deepEqual(replacements, [[IPC_ENDPOINT_ENVIRONMENT_VARIABLE, "/tmp/attentive-window.sock"]]);
     assert.deepEqual(deletions, [
-      "ATTENTIVE_VSCODE_CALLBACK_URI",
-      IPC_ENDPOINT_ENVIRONMENT_VARIABLE
+      "ATTENTIVE_VSCODE_CALLBACK_URI"
     ]);
     assert.equal(registeredCommand, STATUS_COMMAND);
 
@@ -119,6 +119,55 @@ describe("VS Code window context extension", () => {
     assert.equal(serverOptions?.getContext().focused, false);
     focused = true;
     assert.equal(serverOptions?.getContext().focused, true);
+    await setup.dispose();
+  });
+
+  it("reuses a persisted endpoint after an Extension Host reload", async () => {
+    const persisted = "\\\\.\\pipe\\attentive-vscode-0123456789abcdef0123456789abcdef-sock";
+    const setup = createTestSetup(
+      () => false,
+      "vscode://attentive.attentive-vscode/focus?window=reloaded",
+      persisted
+    );
+    let capturedEndpoint: WindowContextServerOptions["endpoint"];
+    await activateCallbackExtension(setup.context, setup.api, {
+      endpointOptions: { platform: "win32" },
+      startServer: async (options) => {
+        capturedEndpoint = options.endpoint;
+        return fakeServer(persisted);
+      }
+    });
+
+    assert.deepEqual(capturedEndpoint, { kind: "pipe", value: persisted });
+    assert.deepEqual(setup.replacements, [[IPC_ENDPOINT_ENVIRONMENT_VARIABLE, persisted]]);
+    await setup.dispose();
+  });
+
+  it("falls back to a new endpoint when the persisted endpoint cannot listen", async () => {
+    const persisted = "\\\\.\\pipe\\attentive-vscode-0123456789abcdef0123456789abcdef-sock";
+    const replacement = "\\\\.\\pipe\\attentive-vscode-fedcba9876543210fedcba9876543210-sock";
+    const setup = createTestSetup(
+      () => false,
+      "vscode://attentive.attentive-vscode/focus?window=fallback",
+      persisted
+    );
+    const attemptedEndpoints: Array<WindowContextServerOptions["endpoint"]> = [];
+    await activateCallbackExtension(setup.context, setup.api, {
+      endpointOptions: { platform: "win32" },
+      startServer: async (options) => {
+        attemptedEndpoints.push(options.endpoint);
+        if (options.endpoint !== undefined) {
+          throw new Error("endpoint is already in use");
+        }
+        return fakeServer(replacement);
+      }
+    });
+
+    assert.deepEqual(attemptedEndpoints, [
+      { kind: "pipe", value: persisted },
+      undefined
+    ]);
+    assert.deepEqual(setup.replacements, [[IPC_ENDPOINT_ENVIRONMENT_VARIABLE, replacement]]);
     await setup.dispose();
   });
 
@@ -184,7 +233,11 @@ function createApi(options: {
   };
 }
 
-function createTestSetup(focused: () => boolean, externalValue: string) {
+function createTestSetup(
+  focused: () => boolean,
+  externalValue: string,
+  persistedEndpoint?: string
+) {
   const replacements: Array<[string, string]> = [];
   const messages: string[] = [];
   const subscriptions: Array<{ dispose(): unknown }> = [];
@@ -193,6 +246,11 @@ function createTestSetup(focused: () => boolean, externalValue: string) {
     description: undefined as string | undefined,
     persistent: true,
     replace(name: string, value: string) { replacements.push([name, value]); },
+    get(name: string) {
+      return name === IPC_ENDPOINT_ENVIRONMENT_VARIABLE && persistedEndpoint !== undefined
+        ? { value: persistedEndpoint }
+        : undefined;
+    },
     delete() {}
   };
   const context: CallbackExtensionContext = {

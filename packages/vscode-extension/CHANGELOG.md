@@ -2,6 +2,11 @@
 
 All notable changes to the Attentive VS Code extension are documented here.
 
+## [Unreleased]
+
+- Reuse the persisted per-window IPC endpoint across normal VS Code window
+  reloads so restored terminals remain connected.
+
 ## [0.1.7] - 2026-08-25
 
 - Bump the extension version to ensure VS Code recognizes the refreshed package as an update.

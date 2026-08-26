@@ -180,8 +180,8 @@ attentive notify --title "..." --body "..."
 - 声明为 workspace extension；
 - 注册 `/focus` URI handler；
 - 必须原样保存 `asExternalUri` 返回的完整 URI，并由 Window Context IPC 动态返回；
-- 使用非持久的 `environmentVariableCollection` 贡献 `ATTENTIVE_VSCODE_IPC_ENDPOINT`；
-- 新建或重启的集成终端获得 endpoint；窗口重载后恢复的旧终端可能持有已失效 endpoint，并按 fail-open 处理；
+- 使用持久的 `environmentVariableCollection` 贡献 `ATTENTIVE_VSCODE_IPC_ENDPOINT`；
+- 普通单窗口 reload 后重新监听已缓存 endpoint，使恢复终端继续工作；旧值无法安全复用时回退到新 endpoint 并按 fail-open 处理；
 - 每次 IPC 请求即时读取 `vscode.window.state.focused`；
 - handler 不弹窗、不打开文件、不增加失效 URI 回退；
 - 提供不泄露完整 URI 的 callback 状态诊断命令。
@@ -199,7 +199,7 @@ Windows Notifier 使用参数化的 `explorer.exe <uri>` 打开已校验 URI，�
 - Protocol 的 Action 类型、scheme 和长度校验；
 - CLI 的 IPC endpoint 查询、聚焦抑制、显式覆盖、缺失和非法降级；
 - Notifier 点击去重和无 shell URI opener；
-- VS Code 扩展的 callback 生成、IPC server、非持久 endpoint 注入和 handler 路径校验。
+- VS Code 扩展的 callback 生成、IPC server、持久 endpoint 复用和 handler 路径校验。
 
 人工验收至少覆盖：
 

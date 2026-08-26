@@ -22,8 +22,9 @@ Install **Attentive** from the VS Code Extensions view or from the Visual
 Studio Marketplace. After installation, create a new integrated terminal or
 restart the existing one before running `attentive`.
 
-Existing shells are not modified. A shell restored after a VS Code reload may
-hold an old endpoint; restarting that terminal refreshes the integration.
+The endpoint contribution is cached by VS Code. In a normal single-window
+reload, the reactivated extension listens on the same endpoint so restored
+shells continue working without a restart.
 
 ## Usage
 
@@ -57,11 +58,14 @@ notification instead of suppressing it.
 
 ## Limitations and troubleshooting
 
-- Restart the integrated terminal after installing the extension or reloading
-  VS Code.
+- Restart the integrated terminal after installing the extension.
 - If the status command reports that IPC is not listening, reload the VS Code
   window and restart the terminal.
-- A restored terminal can contain a stale endpoint and must be restarted.
+- If a persisted endpoint cannot be validated or rebound, the extension falls
+  back to a new endpoint and restored terminals must be restarted.
+- Same-workspace multi-window use is unverified. Because VS Code caches the
+  endpoint by workspace, restored terminals may disconnect or route to the
+  wrong window; restart affected terminals if needed.
 - Explicit notification URLs continue to take precedence over the callback
   supplied by the extension.
 - The extension depends on the capabilities of the VS Code extension host and

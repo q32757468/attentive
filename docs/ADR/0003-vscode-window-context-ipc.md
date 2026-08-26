@@ -75,9 +75,9 @@ VS Code `window.state` 能直接提供 `focused` 和 `active`，但没有通用�
 ATTENTIVE_VSCODE_IPC_ENDPOINT=<opaque socket or pipe path>
 ```
 
-该 contribution 设为非持久。每次 Extension Host 激活生成新 endpoint，不尝试跨重载重占旧地址。新建或重启的终端获得新值；已经运行或在窗口重载后恢复的 shell 仍可能持有旧值，其查询会失败并 fail-open，直到终端被新建或重启。
+该 contribution 设为持久。普通单窗口 reload 时，新 Extension Host 校验 VS Code 缓存的 endpoint，并优先重新监听同一地址，使恢复的 shell 可以继续使用原环境变量。旧 endpoint 无法安全校验或重新监听时，扩展回退到新的随机地址；此时旧 shell 查询失败并 fail-open，直到终端被新建或重启。
 
-扩展正常停用时关闭 server，并在非 Windows 平台 best-effort 清理 socket 文件。进程崩溃留下的随机 socket 不在下一次激活时盲目删除或重占。
+扩展正常停用时等待 server 关闭，并在非 Windows 平台 best-effort 清理 socket 文件。为支持重绑，fallback 私有目录会保留并在每次复用前重新校验所有者和权限。进程崩溃留下的 socket 不会被盲目删除或重占。
 
 ### Window Context API
 
@@ -182,7 +182,7 @@ Unix 通过用户私有目录和最小 socket 权限限制访问；Windows 使�
 
 ### 使用稳定 endpoint 或常驻 broker
 
-可以让窗口重载后恢复的终端继续查询，但需要稳定的每窗口身份、活性探测、冲突处理、stale socket 清理或额外进程。当前通知可以安全 fail-open，因此选择与 Extension Host 生命周期一致的随机 endpoint。
+常驻 broker 可以进一步覆盖相同 workspace 多窗口等复杂场景，但需要稳定的每窗口身份、活性探测、冲突处理和额外进程。当前先采用持久 contribution 和安全重绑，目标范围是普通单窗口 reload；复杂场景仍保持 fail-open。
 
 ### 增加 bearer token
 

@@ -78,6 +78,52 @@ export async function createIpcEndpoint(
   };
 }
 
+/**
+ * Restores an endpoint previously written by this extension to VS Code's
+ * persistent terminal environment collection. The directory is revalidated
+ * before the endpoint is trusted across an Extension Host reload.
+ */
+export async function restoreIpcEndpoint(
+  value: string,
+  options: IpcEndpointOptions = {}
+): Promise<IpcEndpoint | undefined> {
+  const platform = options.platform ?? process.platform;
+  if (platform === "win32") {
+    return /^\\\\\.\\pipe\\attentive-vscode-[a-f0-9]{32}-sock$/.test(value)
+      ? { kind: "pipe", value }
+      : undefined;
+  }
+
+  const maxPathLength = options.maxUnixSocketPathLength ?? MAX_UNIX_SOCKET_PATH_LENGTH;
+  if (!posixPath.isAbsolute(value) || !isSocketPathWithinLimit(value, maxPathLength)) {
+    return undefined;
+  }
+
+  const fileSystem = options.fileSystem ?? defaultIpcEndpointFileSystem;
+  const directory = posixPath.dirname(value);
+  const name = posixPath.basename(value);
+  const runtimeDirectory = (options.env ?? process.env).XDG_RUNTIME_DIR;
+  const isRuntimeSocket = runtimeDirectory !== undefined &&
+    posixPath.resolve(runtimeDirectory) === directory &&
+    /^attentive-[a-f0-9]{32}\.sock$/.test(name);
+  const temporaryRoot = posixPath.resolve((options.tempDirectory ?? tmpdir)());
+  const privateDirectoryName = posixPath.basename(directory);
+  const isPrivateSocket = posixPath.dirname(directory) === temporaryRoot &&
+    /^attentive-[^/]+$/.test(privateDirectoryName) &&
+    /^a-[a-f0-9]{32}\.sock$/.test(name);
+
+  if (
+    (!isRuntimeSocket && !isPrivateSocket) ||
+    !await isSecureDirectory(directory, options, fileSystem)
+  ) {
+    return undefined;
+  }
+
+  // Do not restore privateDirectory metadata: the directory must remain in
+  // place so this cached endpoint can be rebound after the next reload.
+  return { kind: "socket", value };
+}
+
 export function isSocketPathWithinLimit(
   value: string,
   maxLength = MAX_UNIX_SOCKET_PATH_LENGTH

@@ -41,6 +41,8 @@ export interface WindowContextServerOptions {
   onError?: (category: string) => void;
   maxConnections?: number;
   idleTimeoutMs?: number;
+  /** Keep a generated private directory so a persisted endpoint can be rebound. */
+  preservePrivateDirectory?: boolean;
   createServerImpl?: (
     options: { maxHeaderSize: number },
     requestListener: RequestListener
@@ -72,6 +74,9 @@ export async function startWindowContextServer(
   const maxConnections = options.maxConnections ?? DEFAULT_MAX_CONNECTIONS;
   const idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
   const connections = new Set<Socket>();
+  const cleanupEndpoint = options.preservePrivateDirectory && endpoint.privateDirectory
+    ? { kind: endpoint.kind, value: endpoint.value } satisfies IpcEndpoint
+    : endpoint;
   let stopping = false;
   let listening = false;
 
@@ -97,7 +102,7 @@ export async function startWindowContextServer(
       }
     );
   } catch (error: unknown) {
-    await cleanupIpcEndpoint(endpoint, endpointFileSystem, { removeSocket: false });
+    await cleanupIpcEndpoint(cleanupEndpoint, endpointFileSystem, { removeSocket: false });
     throw error;
   }
 
@@ -140,7 +145,7 @@ export async function startWindowContextServer(
     } catch {
       // Preserve the startup error; cleanup below remains best effort.
     }
-    await cleanupIpcEndpoint(endpoint, endpointFileSystem, { removeSocket: listening });
+    await cleanupIpcEndpoint(cleanupEndpoint, endpointFileSystem, { removeSocket: listening });
     throw error;
   }
 
@@ -160,7 +165,7 @@ export async function startWindowContextServer(
       try {
         await closeServer(server);
       } finally {
-        await cleanupIpcEndpoint(endpoint, endpointFileSystem);
+        await cleanupIpcEndpoint(cleanupEndpoint, endpointFileSystem);
       }
     }
   };
