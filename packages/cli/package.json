@@ -1,11 +1,22 @@
 {
   "name": "@attentive-kit/cli",
   "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/q32757468/attentive.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
   "engines": {
     "node": ">=18.18"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "attentive": "dist/cli.js"
   },

@@ -1,0 +1,232 @@
+name: Publish CLI to npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Validate, build, and publish
+    if: github.repository == 'q32757468/attentive'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: npm
+    env:
+      EXPECTED_PACKAGE_NAME: "@attentive-kit/cli"
+      EXPECTED_REGISTRY: "https://registry.npmjs.org/"
+      NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/"
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_DRAFT: ${{ github.event.release.draft }}
+      RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+
+    steps:
+      - name: Validate release event
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$RELEASE_DRAFT" != "false" || "$RELEASE_PRERELEASE" != "false" ]]; then
+            echo "Only a published, non-draft, non-prerelease GitHub Release may publish npm." >&2
+            exit 1
+          fi
+
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Release tag must be a stable SemVer tag in the form vX.Y.Z: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+      # actions/checkout v5.0.1
+      - name: Check out the exact release tag
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify checkout and package version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag_commit="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          if [[ "$head_commit" != "$tag_commit" ]]; then
+            echo "Checked-out commit does not match release tag $RELEASE_TAG." >&2
+            exit 1
+          fi
+
+          package_version="$(node -p "require('./packages/cli/package.json').version")"
+          tag_version="${RELEASE_TAG#v}"
+
+          if [[ "$package_version" != "$tag_version" ]]; then
+            echo "Release tag $RELEASE_TAG does not match CLI version $package_version." >&2
+            exit 1
+          fi
+
+          echo "PACKAGE_VERSION=$package_version" >> "$GITHUB_ENV"
+
+      # actions/setup-node v5.0.0
+      - name: Set up Node.js 24
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "24"
+          cache: false
+
+      - name: Set up npm and pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.6.2
+          corepack enable
+          corepack install
+
+          if [[ "$(npm config get registry)" != "$EXPECTED_REGISTRY" ]]; then
+            echo "npm registry is not the public registry." >&2
+            exit 1
+          fi
+          scoped_registry="$(npm config get '@attentive-kit:registry')"
+          if [[ "$scoped_registry" != "undefined" && "$scoped_registry" != "$EXPECTED_REGISTRY" ]]; then
+            echo "The @attentive-kit scope overrides the public npm registry." >&2
+            exit 1
+          fi
+          if [[ -n "${NPM_TOKEN:-}" || -n "${NODE_AUTH_TOKEN:-}" ]]; then
+            echo "Token-based npm credentials must not be used by this workflow." >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Pack and inspect CLI tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          pack_dir="$RUNNER_TEMP/attentive-pack"
+          extract_dir="$RUNNER_TEMP/attentive-package"
+          mkdir -p "$pack_dir" "$extract_dir"
+          pnpm --dir packages/cli pack --pack-destination "$pack_dir"
+
+          tarballs=("$pack_dir"/*.tgz)
+          if (( ${#tarballs[@]} != 1 )); then
+            echo "Expected exactly one CLI tarball, found ${#tarballs[@]}." >&2
+            exit 1
+          fi
+          tarball="${tarballs[0]}"
+
+          while IFS= read -r entry; do
+            if [[ "$entry" != "package/package.json" && "$entry" != package/dist/* ]]; then
+              echo "Unexpected file in publish tarball: $entry" >&2
+              exit 1
+            fi
+          done < <(tar -tzf "$tarball")
+
+          tar -xzf "$tarball" -C "$extract_dir"
+          node - "$extract_dir/package/package.json" "$EXPECTED_PACKAGE_NAME" "$PACKAGE_VERSION" <<'NODE'
+          const [manifestPath, expectedName, expectedVersion] = process.argv.slice(2);
+          const manifest = require(manifestPath);
+          const internalPackage = "@attentive-kit/protocol";
+          const runtimeFields = ["dependencies", "peerDependencies", "optionalDependencies"];
+
+          if (manifest.name !== expectedName || manifest.version !== expectedVersion) {
+            throw new Error(`Packed identity mismatch: ${manifest.name}@${manifest.version}`);
+          }
+          if (manifest.private === true) throw new Error("Packed CLI must not be private");
+          if (manifest.license !== "MIT") throw new Error("Packed CLI must declare the MIT license");
+          if (manifest.repository?.url !== "git+https://github.com/q32757468/attentive.git") {
+            throw new Error("Packed CLI repository URL is incorrect");
+          }
+          if (manifest.repository?.directory !== "packages/cli") {
+            throw new Error("Packed CLI repository directory is incorrect");
+          }
+          if (manifest.publishConfig?.access !== "public" || manifest.publishConfig?.registry) {
+            throw new Error("Packed CLI publishConfig must select public access without overriding the registry");
+          }
+          for (const field of runtimeFields) {
+            if (manifest[field]?.[internalPackage]) {
+              throw new Error(`${internalPackage} must not appear in ${field}`);
+            }
+          }
+          NODE
+
+          if grep -R -n -F '@attentive-kit/protocol' "$extract_dir/package/dist" --include='*.js' --include='*.d.ts'; then
+            echo "CLI output contains an external reference to the internal protocol package." >&2
+            exit 1
+          fi
+
+          integrity="sha512-$(openssl dgst -sha512 -binary "$tarball" | openssl base64 -A)"
+          echo "TARBALL=$tarball" >> "$GITHUB_ENV"
+          echo "TARBALL_INTEGRITY=$integrity" >> "$GITHUB_ENV"
+
+      - name: Smoke test packed CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke_dir="$RUNNER_TEMP/attentive-smoke"
+          mkdir -p "$smoke_dir"
+          cd "$smoke_dir"
+          npm init --yes >/dev/null
+          npm install --ignore-scripts "$TARBALL"
+          help_output="$(./node_modules/.bin/attentive --help)"
+          printf '%s\n' "$help_output"
+          grep -q '^Usage: attentive ' <<< "$help_output"
+
+      - name: Verify lockfile is unchanged
+        run: git diff --exit-code -- pnpm-lock.yaml
+
+      - name: Check whether this version is already published
+        id: existing
+        shell: bash
+        run: |
+          set -euo pipefail
+          error_file="$RUNNER_TEMP/npm-view-error.log"
+
+          if published_integrity="$(npm view "$EXPECTED_PACKAGE_NAME@$PACKAGE_VERSION" dist.integrity --json --registry="$EXPECTED_REGISTRY" 2>"$error_file")"; then
+            published_integrity="$(node -e 'const value = JSON.parse(process.argv[1]); if (typeof value !== "string") process.exit(1); process.stdout.write(value)' "$published_integrity")"
+            if [[ "$published_integrity" != "$TARBALL_INTEGRITY" ]]; then
+              echo "npm already has $EXPECTED_PACKAGE_NAME@$PACKAGE_VERSION with different or unverifiable integrity." >&2
+              exit 1
+            fi
+            echo "The identical tarball is already published; npm publish will be skipped."
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          elif grep -q 'E404' "$error_file"; then
+            echo "Version is not present on npm and will be published."
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Could not safely determine whether the version exists on npm." >&2
+            sed -n '1,20p' "$error_file" >&2
+            exit 1
+          fi
+
+      - name: Publish CLI with npm trusted publishing
+        if: steps.existing.outputs.should_publish == 'true'
+        run: npm publish "$TARBALL" --access public --registry="$EXPECTED_REGISTRY"
+
+      - name: Verify published integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          published_integrity="$(npm view "$EXPECTED_PACKAGE_NAME@$PACKAGE_VERSION" dist.integrity --json --registry="$EXPECTED_REGISTRY")"
+          published_integrity="$(node -e 'const value = JSON.parse(process.argv[1]); if (typeof value !== "string") process.exit(1); process.stdout.write(value)' "$published_integrity")"
+          if [[ "$published_integrity" != "$TARBALL_INTEGRITY" ]]; then
+            echo "Published npm integrity does not match the generated tarball." >&2
+            exit 1
+          fi

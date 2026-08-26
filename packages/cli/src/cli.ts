@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import {
   WINDOW_CONTEXT_ENDPOINT_ENVIRONMENT_VARIABLE,
   isHttpUrl,
@@ -8,7 +6,6 @@ import {
   validateNotificationRequest,
   type NotificationRequest
 } from "@attentive-kit/protocol";
-import { basename } from "node:path";
 import { resolveCliConfig } from "./config.js";
 import {
   queryWindowContext,
@@ -328,10 +325,4 @@ Options:
   --config <path>         Config file path
   --timeout <milliseconds> Request timeout (default: 10000)
   -h, --help              Show this help`;
-}
-
-if (process.argv[1] && (basename(process.argv[1]) === "cli.js" || basename(process.argv[1]) === "cli.ts")) {
-  void run().then((exitCode) => {
-    process.exitCode = exitCode;
-  });
 }
