@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+const { existsSync, readFileSync } = require("node:fs");
+const { homedir } = require("node:os");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
+const { detectNotifierUrl } = require("./detect-notifier-url.js");
 
 const payloadText = readStdin();
 
@@ -32,24 +33,37 @@ const title = findSessionTitle(sessionId)
   ?? firstTranscriptMessage(payload.transcript_path)
   ?? "Codex";
 
-spawnSync("npx", [
-  "-y",
-  "@attentive-kit/cli",
-  "notify",
-  "--title",
-  title,
-  "--body",
-  body,
-  "--notifier-url",
-  "http://192.168.31.17:8765",
-  "--source",
-  "codex"
-], {
-  cwd: typeof payload.cwd === "string" ? payload.cwd : undefined,
-  stdio: "ignore"
+detectNotifierUrl(readNotifierUrlArg(process.argv.slice(2))).then((notifierUrl) => {
+  spawnSync("npx", [
+    "-y",
+    "@attentive-kit/cli",
+    "notify",
+    "--title",
+    title,
+    "--body",
+    body,
+    "--notifier-url",
+    notifierUrl,
+    "--source",
+    "codex"
+  ], {
+    cwd: typeof payload.cwd === "string" ? payload.cwd : undefined,
+    stdio: "ignore"
+  });
+
+  process.stdout.write("{}\n");
 });
 
-process.stdout.write("{}\n");
+function readNotifierUrlArg(args) {
+  const inlineArg = args.find((arg) => arg.startsWith("--notifier-url="));
+  if (inlineArg) {
+    return inlineArg.slice("--notifier-url=".length).trim() || undefined;
+  }
+
+  const argIndex = args.indexOf("--notifier-url");
+  const value = argIndex >= 0 ? args[argIndex + 1] : undefined;
+  return value && !value.startsWith("--") ? value : undefined;
+}
 
 function readStdin() {
   try {
