@@ -4,6 +4,11 @@ All notable changes to the Attentive VS Code extension are documented here.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-08-27
+
+- Update the extension icon with tighter framing and approximately 10% side
+  margins while retaining the 128×128 canvas size.
+
 ## [0.1.9] - 2026-08-26
 
 - Reuse the persisted per-window IPC endpoint across normal VS Code window
