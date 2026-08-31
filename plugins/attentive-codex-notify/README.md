@@ -6,10 +6,10 @@ Attentive notifier when the `Stop` lifecycle event fires.
 The plugin is self-contained: the hook configuration lives in `hooks/hooks.json`
 and the notification runner lives in `scripts/attentive-codex-notify.js`.
 
-## Install from this repository
+## Install from the marketplace
 
 ```bash
-codex plugin marketplace add /path/to/attentive
+codex plugin marketplace add https://github.com/q32757468/attentive
 codex plugin add attentive-codex-notify@attentive-codex-plugins
 ```
 
