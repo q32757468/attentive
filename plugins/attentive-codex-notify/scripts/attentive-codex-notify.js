@@ -97,6 +97,10 @@ function resolveNpxInvocation(options = {}) {
   const environment = options.env ?? process.env;
   const fileExists = options.existsSync ?? fs.existsSync;
   const pathApi = options.pathApi ?? path.win32;
+  const tempRoot = typeof options.tmpdir === "function"
+    ? options.tmpdir()
+    : (options.tmpdir ?? os.tmpdir());
+  const cacheDir = pathApi.join(tempRoot, "attentive");
   const candidates = [];
 
   if (/npm-cli\.js$/i.test(environment.npm_execpath ?? "")) {
@@ -126,7 +130,7 @@ function resolveNpxInvocation(options = {}) {
 
   // .cmd files require a command shell on Windows. Running npm's JavaScript
   // entry point with node.exe keeps shell parsing disabled and arguments intact.
-  return { command: execPath, args: [npxCliPath] };
+  return { command: execPath, args: [npxCliPath, "--cache", cacheDir] };
 }
 
 function formatInvocation(invocation) {

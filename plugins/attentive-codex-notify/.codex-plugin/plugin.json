@@ -1,6 +1,6 @@
 {
   "name": "attentive-codex-notify",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Send completed Codex responses to an Attentive notifier.",
   "author": {
     "name": "Attentive"

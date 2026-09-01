@@ -80,9 +80,28 @@ describe("attentive Codex notification runner", () => {
     });
   });
 
-  it("runs npx-cli.js with node.exe on Windows", () => {
+  it("runs npx-cli.js with node.exe and cache in attentive temp subdirectory on Windows", () => {
     const nodePath = String.raw`C:\Program Files\nodejs\node.exe`;
     const npxPath = String.raw`C:\Program Files\nodejs\node_modules\npm\bin\npx-cli.js`;
+    const tempDir = String.raw`C:\Users\test\AppData\Local\Temp`;
+    const cacheDir = String.raw`C:\Users\test\AppData\Local\Temp\attentive`;
+
+    assert.deepEqual(resolveNpxInvocation({
+      platform: "win32",
+      execPath: nodePath,
+      env: {},
+      existsSync: (candidate) => candidate === npxPath,
+      tmpdir: tempDir,
+    }), {
+      command: nodePath,
+      args: [npxPath, "--cache", cacheDir],
+    });
+  });
+
+  it("defaults to os.tmpdir()/attentive for cache directory on Windows", () => {
+    const nodePath = String.raw`C:\Program Files\nodejs\node.exe`;
+    const npxPath = String.raw`C:\Program Files\nodejs\node_modules\npm\bin\npx-cli.js`;
+    const cacheDir = path.win32.join(os.tmpdir(), "attentive");
 
     assert.deepEqual(resolveNpxInvocation({
       platform: "win32",
@@ -91,7 +110,7 @@ describe("attentive Codex notification runner", () => {
       existsSync: (candidate) => candidate === npxPath,
     }), {
       command: nodePath,
-      args: [npxPath],
+      args: [npxPath, "--cache", cacheDir],
     });
   });
 
@@ -99,15 +118,18 @@ describe("attentive Codex notification runner", () => {
     const nodePath = String.raw`D:\tools\node.exe`;
     const npmPath = String.raw`C:\npm\bin\npm-cli.js`;
     const npxPath = String.raw`C:\npm\bin\npx-cli.js`;
+    const tempDir = String.raw`C:\Users\test\AppData\Local\Temp`;
+    const cacheDir = String.raw`C:\Users\test\AppData\Local\Temp\attentive`;
 
     assert.deepEqual(resolveNpxInvocation({
       platform: "win32",
       execPath: nodePath,
       env: { npm_execpath: npmPath },
       existsSync: (candidate) => candidate === npxPath,
+      tmpdir: tempDir,
     }), {
       command: nodePath,
-      args: [npxPath],
+      args: [npxPath, "--cache", cacheDir],
     });
   });
 
