@@ -6,6 +6,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/scripts/attentive-codex-notify.js\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\scripts\\attentive-codex-notify.js\"",
             "async": true,
             "timeout": 30,
             "statusMessage": "Sending Codex notification"
