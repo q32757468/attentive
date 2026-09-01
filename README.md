@@ -2,8 +2,6 @@
 
 Attentive 是一个通过 HTTP 接收通知请求、并在 Windows 主机上显示系统通知的 pnpm TypeScript monorepo。
 
-当前 `0.1` 实现包含 Notifier、CLI、受控点击 Action 和 VS Code Stable 窗口上下文 IPC 扩展。当 CLI 在扩展创建的新集成终端中运行时，点击通知可回到来源窗口；来源窗口聚焦时通知会被 CLI 成功抑制。
-
 ## 开发
 
 ```bash
