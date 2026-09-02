@@ -6,7 +6,7 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { detectNotifierUrl } = require("./detect-notifier-url.js");
 
-const ERROR_PREFIX = "[attentive-codex-notify]";
+const ERROR_PREFIX = "[attentive-notify]";
 
 async function main() {
   const payloadText = fs.readFileSync(0, "utf8");
@@ -22,6 +22,14 @@ async function main() {
     return;
   }
 
+  // Claude Code sets this when a Stop hook is running as a result of another
+  // Stop hook. Do not create a notification loop when that guard is active.
+  if (payload.stop_hook_active === true) {
+    return;
+  }
+
+  const claudeCodePayload = isClaudeCodePayload(payload);
+
   const body = typeof payload.last_assistant_message === "string"
     ? payload.last_assistant_message.trim()
     : "";
@@ -34,7 +42,7 @@ async function main() {
     : "";
   const title = findSessionTitle(sessionId)
     ?? firstTranscriptMessage(payload.transcript_path)
-    ?? "Codex";
+    ?? (claudeCodePayload ? "Claude Code" : "Codex");
   const notifierUrl = await detectNotifierUrl(readNotifierUrlArg(process.argv.slice(2)));
 
   runNpx([
@@ -48,12 +56,16 @@ async function main() {
     "--notifier-url",
     notifierUrl,
     "--source",
-    "codex"
+    claudeCodePayload ? "claude-code" : "codex"
   ], {
     cwd: typeof payload.cwd === "string" ? payload.cwd : undefined,
   });
 
   process.stdout.write("{}\n");
+}
+
+function isClaudeCodePayload(payload) {
+  return Object.prototype.hasOwnProperty.call(payload, "stop_hook_active");
 }
 
 function runNpx(args, options = {}) {
@@ -213,24 +225,35 @@ function firstTranscriptMessage(transcriptPath) {
       continue;
     }
 
-    const item = entry?.payload;
-    if (item?.type !== "message" || item.role !== "user") {
+    const item = entry?.payload ?? entry?.message;
+    const isCodexUserMessage = item?.type === "message" && item.role === "user";
+    const isClaudeCodeUserMessage = entry?.type === "user" && item?.role === "user";
+    if (!isCodexUserMessage && !isClaudeCodeUserMessage) {
       continue;
     }
 
-    const text = Array.isArray(item.content)
-      ? item.content
-        .filter((part) => part?.type === "input_text")
-        .map((part) => part.text)
-        .filter((part) => typeof part === "string")
-        .join("\n")
-      : "";
+    const text = messageText(item.content);
     const title = text.trim();
     if (title && !title.startsWith("<environment_context>")) {
       return title;
     }
   }
   return undefined;
+}
+
+function messageText(content) {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return "";
+  }
+
+  return content
+    .filter((part) => part?.type === "input_text" || part?.type === "text")
+    .map((part) => part.text)
+    .filter((part) => typeof part === "string")
+    .join("\n");
 }
 
 function reportWarning(message) {

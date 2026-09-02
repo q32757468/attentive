@@ -11,7 +11,8 @@
     "check": "pnpm run typecheck && pnpm run test",
     "notify": "tsx packages/cli/src/bin.ts notify",
     "notifier": "tsx packages/notifier/src/cli.ts",
-    "test": "pnpm --recursive run test",
+    "test": "pnpm run test:plugin && pnpm --recursive run test",
+    "test:plugin": "node --test plugins/attentive-notify/test/attentive-notify.test.js",
     "typecheck": "pnpm --recursive run typecheck"
   },
   "devDependencies": {

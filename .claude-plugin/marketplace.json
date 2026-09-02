@@ -1,0 +1,29 @@
+{
+  "name": "attentive",
+  "description": "Attentive notification plugins for Codex and Claude Code.",
+  "owner": {
+    "name": "Attentive",
+    "url": "https://github.com/q32757468/attentive"
+  },
+  "plugins": [
+    {
+      "name": "attentive-notify",
+      "source": "./plugins/attentive-notify",
+      "displayName": "Attentive Notify",
+      "description": "Send completed Codex and Claude Code responses to an Attentive notifier.",
+      "version": "0.1.7",
+      "author": {
+        "name": "Attentive"
+      },
+      "homepage": "https://github.com/q32757468/attentive",
+      "repository": "https://github.com/q32757468/attentive",
+      "category": "Productivity",
+      "keywords": [
+        "codex",
+        "claude-code",
+        "notifications",
+        "attentive"
+      ]
+    }
+  ]
+}

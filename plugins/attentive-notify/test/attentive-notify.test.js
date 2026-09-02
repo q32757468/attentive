@@ -7,12 +7,12 @@ const { describe, it } = require("node:test");
 const {
   resolveNpxInvocation,
   runNpx,
-} = require("../scripts/attentive-codex-notify.js");
+} = require("../scripts/attentive-notify.js");
 
-const HOOK_PATH = path.resolve(__dirname, "../scripts/attentive-codex-notify.js");
+const HOOK_PATH = path.resolve(__dirname, "../scripts/attentive-notify.js");
 
 function createHookHarness(t) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "attentive-codex-notify-"));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "attentive-notify-"));
   const codexHome = path.join(directory, "codex-home");
   const argsPath = path.join(directory, "npx-invocation.json");
   const npxScript = `#!/usr/bin/env node
@@ -72,7 +72,7 @@ function valueAfter(args, flag) {
   return args[args.indexOf(flag) + 1];
 }
 
-describe("attentive Codex notification runner", () => {
+describe("attentive agent notification runner", () => {
   it("runs npx directly outside Windows", () => {
     assert.deepEqual(resolveNpxInvocation({ platform: "linux" }), {
       command: "npx",
@@ -193,6 +193,7 @@ describe("hook entry point", () => {
     for (const payload of [
       { hook_event_name: "BeforeAgent", last_assistant_message: "ignored" },
       stopPayload({ last_assistant_message: "  " }),
+      stopPayload({ stop_hook_active: true }),
     ]) {
       const result = harness.run(payload);
       assert.equal(result.status, 0);
@@ -239,6 +240,28 @@ describe("hook entry point", () => {
     assert.equal(result.stdout, "");
     assert.match(result.stderr, /exit code 7/);
     assert.match(result.stderr, /notification rejected/);
+  });
+
+  it("supports Claude Code Stop payloads and transcript records", (t) => {
+    const harness = createHookHarness(t);
+    const transcriptPath = path.join(harness.directory, "claude-transcript.jsonl");
+    fs.writeFileSync(transcriptPath, JSON.stringify({
+      type: "user",
+      message: {
+        role: "user",
+        content: [{ type: "text", text: "Claude Code task title" }],
+      },
+    }));
+
+    const result = harness.run(stopPayload({
+      stop_hook_active: false,
+      transcript_path: transcriptPath,
+    }));
+
+    assert.equal(result.status, 0);
+    const invocation = harness.readInvocation();
+    assert.equal(valueAfter(invocation.args, "--title"), "Claude Code task title");
+    assert.equal(valueAfter(invocation.args, "--source"), "claude-code");
   });
 });
 

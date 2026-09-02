@@ -2,6 +2,30 @@
 
 Attentive 是一个通过 HTTP 接收通知请求、并在 Windows 主机上显示系统通知的 pnpm TypeScript monorepo。
 
+## Codex / Claude Code 插件
+
+仓库中的 `plugins/attentive-notify/` 是 Codex 和 Claude Code
+插件目录，使用同一份 `Stop` hook 将完成的非空响应发送到 Attentive
+notifier。详细说明见
+[插件说明](plugins/attentive-notify/README.md)。
+
+仓库使用根目录的 `.claude-plugin/marketplace.json` 作为唯一 marketplace
+入口；Claude Code 直接读取它，Codex 也兼容读取。它指向同一个插件目录。
+
+Codex：
+
+```bash
+codex plugin marketplace add https://github.com/q32757468/attentive
+codex plugin add attentive-notify@attentive
+```
+
+Claude Code：
+
+```text
+/plugin marketplace add q32757468/attentive
+/plugin install attentive-notify@attentive
+```
+
 ## 开发
 
 ```bash

@@ -1,0 +1,28 @@
+{
+  "name": "attentive-notify",
+  "version": "0.1.7",
+  "description": "Send completed Codex and Claude Code responses to an Attentive notifier.",
+  "author": {
+    "name": "Attentive"
+  },
+  "homepage": "https://github.com/q32757468/attentive",
+  "repository": "https://github.com/q32757468/attentive",
+  "keywords": [
+    "codex",
+    "claude-code",
+    "notifications",
+    "attentive"
+  ],
+  "interface": {
+    "displayName": "Attentive Notify",
+    "shortDescription": "Notify Attentive when Codex or Claude Code finishes a response.",
+    "longDescription": "Forwards each non-empty Stop response from Codex or Claude Code to the configured Attentive notifier and derives a useful title from the session.",
+    "developerName": "Attentive",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "defaultPrompt": "Send an Attentive notification when the current coding task finishes.",
+    "websiteURL": "https://github.com/q32757468/attentive"
+  }
+}
